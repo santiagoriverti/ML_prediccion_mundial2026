@@ -66,6 +66,22 @@ def _col(df: pd.DataFrame, idx: int) -> pd.Series:
     return df.iloc[:, idx]
 
 
+def _buscar_col(df: pd.DataFrame, subcadena: str) -> int | None:
+    """Índice de la 1ª columna cuyo nombre contiene ``subcadena`` (sin acentos).
+
+    Tolera acentos/mayúsculas/encoding para localizar columnas agregadas a mano
+    (p. ej. 'Puntaje DT', 'Puntaje clasif. ponderado') sin depender de su orden.
+    """
+    def clave(s):
+        s = unicodedata.normalize("NFKD", str(s)).encode("ascii", "ignore").decode()
+        return s.strip().lower()
+    objetivo = clave(subcadena)
+    for i, c in enumerate(df.columns):
+        if objetivo in clave(c):
+            return i
+    return None
+
+
 # ---------------------------------------------------------------------------
 # Contenedor de todos los datos del torneo
 # ---------------------------------------------------------------------------
@@ -182,7 +198,7 @@ def construir_equipos(xls: pd.ExcelFile) -> pd.DataFrame:
         h = h.dropna(subset=["pais"])
         eq = eq.merge(h, on="pais", how="left")
 
-    # --- DTs (features de contexto opcionales) ---
+    # --- DTs (puntaje de trayectoria + contexto) ---
     dts = _leer_hoja(xls, "DTs")
     if dts is not None:
         d = pd.DataFrame()
@@ -195,16 +211,28 @@ def construir_equipos(xls: pd.ExcelFile) -> pd.DataFrame:
         ]
         anio = pd.to_numeric(_col(dts, 4), errors="coerce")
         d["dt_antiguedad"] = 2026 - anio
+        # Puntaje de trayectoria del DT (selección + clubes, 0-100). Si la
+        # columna no existe (Excel viejo), queda NaN y el modelo la ignora.
+        col_dt = _buscar_col(dts, "puntaje dt")
+        if col_dt is not None:
+            d["dt_score"] = pd.to_numeric(_col(dts, col_dt), errors="coerce")
         d = d.dropna(subset=["pais"])
         eq = eq.merge(d, on="pais", how="left")
 
-    # --- Clasificatorias y Predictores_país: cargar solo si tienen datos ---
+    # --- Clasificatorias: registro + puntaje ponderado por confederación ---
     clasif = _leer_hoja(xls, "Clasificatorias")
     if clasif is not None and clasif.iloc[:, 3].notna().any():
         c = pd.DataFrame({"pais": _col(clasif, 1).map(_norm_texto)})
         for nombre, idx in [("cl_pj", 3), ("cl_pg", 4), ("cl_pe", 5),
                             ("cl_pp", 6), ("cl_gf", 7), ("cl_gc", 8)]:
             c[nombre] = pd.to_numeric(_col(clasif, idx), errors="coerce")
+        # Dificultad de confederación y puntaje ponderado (= %Pts * dificultad).
+        col_dif = _buscar_col(clasif, "dificultad")
+        col_sc = _buscar_col(clasif, "ponderado")
+        if col_dif is not None:
+            c["cl_dificultad"] = pd.to_numeric(_col(clasif, col_dif), errors="coerce")
+        if col_sc is not None:
+            c["cl_score"] = pd.to_numeric(_col(clasif, col_sc), errors="coerce")
         c = c.dropna(subset=["pais"])
         eq = eq.merge(c, on="pais", how="left")
 

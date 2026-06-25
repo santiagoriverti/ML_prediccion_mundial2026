@@ -288,6 +288,7 @@ def _precomputar(equipos, fixture, bracket, gen):
     # Cruces de 32avos parseados una sola vez
     r32 = bracket[bracket["ronda"].str.contains("32", na=False)].sort_values("partido")
     cruces_def, slots_terceros = [], []
+    fixed_ko = {}   # {partido: (goles_1, goles_2)} para resultados KO ya cargados
     for _, fila in r32.iterrows():
         s1 = _parse_slot(fila["slot_1"])
         s2 = _parse_slot(fila["slot_2"])
@@ -295,13 +296,18 @@ def _precomputar(equipos, fixture, bracket, gen):
         for s in (s1, s2):
             if s[0] == "tercero":
                 slots_terceros.append((fila["partido"], s[2]))
+        # Resultado de 32avos cargado (ambos goles presentes) -> hecho fijo:
+        # el ganador avanza y el perdedor queda eliminado en TODAS las corridas.
+        g1, g2 = fila.get("goles_1"), fila.get("goles_2")
+        if pd.notna(g1) and pd.notna(g2):
+            fixed_ko[fila["partido"]] = (float(g1), float(g2))
 
     return {
         "paises": paises, "sede": sede, "partidos": partidos,
         "lam_pend": np.array(lam_pend, dtype=float),
         "mu_pend": np.array(mu_pend, dtype=float),
         "grupos": grupos, "cruces_def": cruces_def,
-        "slots_terceros": slots_terceros,
+        "slots_terceros": slots_terceros, "fixed_ko": fixed_ko,
     }
 
 
@@ -359,10 +365,13 @@ def _una_corrida(ctx, gen, rng, ga_row, gb_row):
     # --- Eliminatorias (localía moderada para anfitriones; ver FACTOR_LOCALIA_KO) ---
     nombres = ["32avos", "16avos", "Cuartos", "Semifinales", "Final"]
     sede = ctx["sede"]
+    fixed_ko = ctx.get("fixed_ko", {})
+    ids_r1 = [idp for (idp, _, _) in ctx["cruces_def"]]  # partido de cada cruce
     actual = cruces
     for nombre in nombres:
+        es_primera = (nombre == nombres[0])
         ganadores = []
-        for (e1, e2) in actual:
+        for k, (e1, e2) in enumerate(actual):
             if e1 is not None:
                 _subir_ronda(ronda, e1, nombre)
             if e2 is not None:
@@ -375,6 +384,17 @@ def _una_corrida(ctx, gen, rng, ga_row, gb_row):
                 ganadores.append(e1); continue
             # Anfitrión en casa: fracción de la ventaja (no plena) si uno es sede.
             anf = FACTOR_LOCALIA_KO * (sede.get(e1, 0.0) - sede.get(e2, 0.0))
+            # ¿Resultado de 32avos ya cargado? -> hecho fijo (gana quien marcó más).
+            fijo = fixed_ko.get(ids_r1[k]) if es_primera else None
+            if fijo is not None:
+                g1f, g2f = fijo
+                if g1f > g2f:
+                    gan = e1
+                elif g2f > g1f:
+                    gan = e2
+                else:  # empate cargado (90'): se define por fuerza (prórroga/penales)
+                    gan = e1 if rng.random() < gen.prob_gana_a(e1, e2, anf) else e2
+                ganadores.append(gan); continue
             ga, gb = gen.muestrear(e1, e2, anf)
             if ga > gb:
                 gan = e1

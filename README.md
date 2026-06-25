@@ -21,22 +21,26 @@ fixture y cuadro final):
    tolerancia a NaN y hojas plantilla vacías).
 2. **Construye las variables (features)** por partido como diferencia A−B:
    rating Elo, ranking y Puntos FIFA, títulos, apariciones, mejor resultado
-   histórico, **valor de plantel** (Transfermarkt), **edad promedio** y localía.
-3. **Entrena los modelos**:
+   histórico, **valor de plantel** (Transfermarkt), **edad promedio**, **puntaje
+   de trayectoria del DT**, **clasificatoria ponderada por dificultad de
+   confederación**, **proporción de jugadores en las 5 grandes ligas** y localía.
+3. **Auto-calibra** los parámetros econométricos (`nu`, `lambda_prior`) por
+   validación out-of-fold y **entrena un zoo de modelos**:
    - *Elo probabilístico* (baseline, con ventaja de localía para anfitriones).
    - *Dixon-Coles / Poisson* por máxima verosimilitud, **regularizado con un
      prior basado en el Elo** (necesario por la muestra chica).
-   - *Logit multinomial, RandomForest y GradientBoosting* para 1/X/2, con
-     validación cruzada y calibración.
-   - *Ensemble* que promedia las probabilidades.
-4. **Evalúa y elige el mejor modelo**: compara todos por **validación cruzada
-   out-of-fold** (log-loss, accuracy, Brier) reentrenando en cada fold sin fuga,
-   y usa el ganador para el pronóstico 1/X/2.
+   - *ML para 1/X/2* con **auto-tuning** de hiperparámetros y calibración: logit,
+     RandomForest, ExtraTrees, GradientBoosting, HistGradientBoosting y, si están
+     disponibles, **XGBoost** y **LightGBM**.
+4. **Evalúa y elige los 3 mejores modelos**: compara todos por **validación
+   cruzada out-of-fold** (log-loss, accuracy, Brier) reentrenando en cada fold sin
+   fuga, y usa un **blend ponderado de los 3 mejores** para el pronóstico 1/X/2.
 5. **Simula el torneo** (Monte Carlo, 20.000 corridas, con Dixon-Coles como
    generador de marcadores): completa los partidos no jugados, resuelve los grupos
    con el **desempate oficial FIFA**, asigna los **8 mejores terceros**, arma el
    bracket y juega hasta la final, con **localía moderada para los anfitriones**.
-   Los partidos jugados quedan **fijos**.
+   Los partidos jugados (grupos **y eliminatorias**) quedan **fijos**: los equipos
+   eliminados se descartan automáticamente de los candidatos a campeón.
 
 ## Salidas
 
@@ -93,10 +97,12 @@ ML_prediccion_mundial2026/
 │   └── ARQUITECTURA.md                # referencia de módulos y funciones
 ├── src/
 │   ├── data_loader.py                 # lectura/limpieza del Excel
-│   ├── features.py                    # rating base + dataset por partido
-│   ├── models.py                      # Elo, Dixon-Coles, ML, ensemble
-│   ├── simulate.py                    # actualización Elo + Monte Carlo del torneo
-│   └── viz.py                         # gráficos
+│   ├── features.py                    # rating base + dataset por partido (13 features)
+│   ├── models.py                      # Elo, Dixon-Coles, zoo de ML, auto-tuning, blend top-3
+│   ├── simulate.py                    # actualización Elo + Monte Carlo (con KO fijado)
+│   └── viz.py                         # gráficos (incluye reliability/calibración)
+├── scripts/
+│   └── enriquecer_excel.py            # re-genera el Excel: datos curados + fórmulas
 └── outputs/                           # CSVs y figuras generadas
 ```
 

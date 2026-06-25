@@ -89,6 +89,13 @@ _FEATURES_DIF = [
     # Edad promedio del plantel (Predictores_país). Señal débil/ambigua; el modelo
     # aprende el signo. Sólo aporta si la columna está cargada.
     ("pred_edad_prom._plantel", "d_edad"),
+    # Puntaje de trayectoria del DT (selección + clubes, 0-100). Hoja DTs.
+    ("dt_score", "d_dt"),
+    # Puntaje de la clasificatoria ponderado por dificultad de confederación
+    # (= %Pts * dificultad). Hoja Clasificatorias.
+    ("cl_score", "d_clasif"),
+    # Proporción del plantel en las 5 grandes ligas (conteo/26). Predictores_país.
+    ("pred_jug._en_top-5_ligas", "d_top5"),
 ]
 
 
@@ -131,6 +138,9 @@ def construir_dataset_partidos(equipos: pd.DataFrame,
             # quede en una escala comparable a d_puntos/d_rating (evita que domine al logit).
             if col == "pred_valor_plantel_(€_mm)" and pd.notna(dif):
                 dif = dif / 10.0
+            # Top-5 ligas: de conteo (sobre 26) a diferencia de PROPORCIÓN (0-1).
+            if col == "pred_jug._en_top-5_ligas" and pd.notna(dif):
+                dif = dif / 26.0
             fila[nombre] = dif
 
         # Anfitrión: 1 si A es sede y B no; -1 si B es sede y A no; 0 si ambos/ninguno
@@ -161,6 +171,7 @@ def construir_dataset_partidos(equipos: pd.DataFrame,
 COLUMNAS_FEATURES = [
     "d_rating", "d_ranking", "d_puntos", "d_titulos",
     "d_apariciones", "d_mejor_result", "d_valor_plantel", "d_edad",
+    "d_dt", "d_clasif", "d_top5",
     "anfitrion", "altitud",
 ]
 

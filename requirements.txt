@@ -5,3 +5,7 @@ scikit-learn>=1.3
 scipy>=1.10
 statsmodels>=0.14
 matplotlib>=3.7
+# Gradient boosting de última generación (opcionales: el zoo los usa si están,
+# y degrada con elegancia si no). En Colab se instalan sin problema.
+xgboost>=2.0
+lightgbm>=4.0

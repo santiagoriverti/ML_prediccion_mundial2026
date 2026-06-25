@@ -212,24 +212,128 @@ class DixonColes:
 
 
 # ===========================================================================
-# 3) MODELOS ML SUPERVISADOS (logit multinomial, RF, GBM) + calibración
+# 3) MODELOS ML SUPERVISADOS (zoo amplio + auto-tuning + calibración)
 # ===========================================================================
-def entrenar_modelos_ml(dataset: pd.DataFrame, random_state: int = 42):
-    """Entrena logit multinomial, RandomForest y GradientBoosting para 1/X/2.
+# XGBoost exige etiquetas enteras (0,1,2). Este wrapper (composición, no herencia)
+# codifica las clases 1/X/2 hacia un XGBClassifier interno y expone ``classes_``
+# como strings, para que el resto del pipeline (predecir_ml, calibración, log_loss)
+# las maneje igual que a los demás modelos. Compatible con clone/RandomizedSearchCV.
+try:
+    import xgboost as _xgb  # noqa: F401  (sólo para detectar disponibilidad)
+    from sklearn.base import BaseEstimator, ClassifierMixin
+    from sklearn.preprocessing import LabelEncoder as _LE
 
-    Con N chico se aplica validación cruzada estratificada y calibración. Si no
-    hay suficientes muestras por clase, se devuelve un diccionario con lo que se
-    pudo entrenar y un aviso. Devuelve (modelos, reporte).
+    class XGBClasifStr(BaseEstimator, ClassifierMixin):
+        def __init__(self, n_estimators=200, max_depth=3, learning_rate=0.1,
+                     subsample=1.0, random_state=42):
+            self.n_estimators = n_estimators
+            self.max_depth = max_depth
+            self.learning_rate = learning_rate
+            self.subsample = subsample
+            self.random_state = random_state
+
+        def fit(self, X, y):
+            from xgboost import XGBClassifier
+            self._le = _LE().fit(y)
+            self._m = XGBClassifier(
+                n_estimators=self.n_estimators, max_depth=self.max_depth,
+                learning_rate=self.learning_rate, subsample=self.subsample,
+                random_state=self.random_state, n_jobs=1,
+                eval_metric="mlogloss", tree_method="hist", verbosity=0)
+            self._m.fit(X, self._le.transform(y))
+            self.classes_ = self._le.classes_   # strings, alineado con proba
+            return self
+
+        def predict_proba(self, X):
+            return self._m.predict_proba(X)
+
+        def predict(self, X):
+            return self._le.inverse_transform(self._m.predict(X))
+except Exception:   # xgboost no instalado
+    XGBClasifStr = None
+
+
+def _zoo_modelos(random_state: int = 42):
+    """Define el 'zoo' de clasificadores 1/X/2 con su espacio de búsqueda.
+
+    Siempre disponibles (scikit-learn): logit multinomial, RandomForest,
+    ExtraTrees, GradientBoosting e HistGradientBoosting. Si están instalados,
+    agrega **XGBoost** y **LightGBM** (gradient boosting de última generación).
+
+    Devuelve ``{nombre: (estimador, espacio_busqueda)}``. Las claves del espacio
+    usan el prefijo de paso del Pipeline cuando corresponde (p.ej. logit).
     """
     from sklearn.linear_model import LogisticRegression
-    from sklearn.ensemble import RandomForestClassifier, GradientBoostingClassifier
-    from sklearn.calibration import CalibratedClassifierCV
-    from sklearn.model_selection import cross_val_score, StratifiedKFold
+    from sklearn.ensemble import (RandomForestClassifier, ExtraTreesClassifier,
+                                  GradientBoostingClassifier,
+                                  HistGradientBoostingClassifier)
     from sklearn.pipeline import make_pipeline
     from sklearn.preprocessing import StandardScaler
+    from scipy.stats import loguniform
+
+    rs = random_state
+    zoo = {
+        "logit": (make_pipeline(StandardScaler(),
+                                LogisticRegression(max_iter=3000)),
+                  {"logisticregression__C": loguniform(1e-2, 1e1)}),
+        "rf": (RandomForestClassifier(random_state=rs),
+               {"n_estimators": [200, 400, 600],
+                "max_depth": [2, 3, 4, None],
+                "min_samples_leaf": [1, 2, 3, 5]}),
+        "extra": (ExtraTreesClassifier(random_state=rs),
+                  {"n_estimators": [200, 400, 600],
+                   "max_depth": [2, 3, 4, None],
+                   "min_samples_leaf": [1, 2, 3, 5]}),
+        "gbm": (GradientBoostingClassifier(random_state=rs),
+                {"n_estimators": [100, 200, 300],
+                 "max_depth": [1, 2, 3],
+                 "learning_rate": [0.02, 0.05, 0.1]}),
+        "hist": (HistGradientBoostingClassifier(random_state=rs),
+                 {"max_depth": [2, 3, None],
+                  "learning_rate": [0.03, 0.05, 0.1],
+                  "max_iter": [100, 200],
+                  "min_samples_leaf": [5, 10, 20]}),
+    }
+    if XGBClasifStr is not None:   # XGBoost (opcional)
+        zoo["xgb"] = (
+            XGBClasifStr(random_state=rs),
+            {"n_estimators": [100, 200, 300], "max_depth": [2, 3, 4],
+             "learning_rate": [0.03, 0.05, 0.1], "subsample": [0.8, 1.0]})
+    try:   # LightGBM (opcional)
+        from lightgbm import LGBMClassifier
+        zoo["lgbm"] = (
+            LGBMClassifier(random_state=rs, n_jobs=1, verbose=-1),
+            {"n_estimators": [100, 200, 300], "num_leaves": [7, 15, 31],
+             "learning_rate": [0.03, 0.05, 0.1], "min_child_samples": [5, 10, 20]})
+    except Exception:
+        pass
+    return zoo
+
+
+def entrenar_modelos_ml(dataset: pd.DataFrame, random_state: int = 42,
+                        tune: bool = True, hiperparams: dict | None = None,
+                        n_iter: int = 8, calibrar: bool = True,
+                        calcular_cv: bool = True, calib_cv: int | None = None):
+    """Entrena el zoo de modelos 1/X/2 con **auto-tuning** y calibración.
+
+    * ``tune=True`` y ``hiperparams=None``: cada modelo se calibra con
+      ``RandomizedSearchCV`` (CV estratificada, ``neg_log_loss``); los mejores
+      hiperparámetros quedan en ``reporte['hiperparams']``.
+    * ``hiperparams`` provisto: se reusan esos hiperparámetros (sin re-buscar).
+      Esto lo usa la evaluación out-of-fold para reentrenar rápido por fold con
+      los hiperparámetros ya elegidos.
+
+    Cada modelo final se envuelve en calibración sigmoide (robusta con N chico).
+    Devuelve ``(modelos, reporte)``.
+    """
+    from sklearn.calibration import CalibratedClassifierCV
+    from sklearn.model_selection import (cross_val_score, StratifiedKFold,
+                                        RandomizedSearchCV)
+    from sklearn.base import clone
 
     X, y = matriz_modelo(dataset, solo_jugados=True)
-    reporte = {"n": int(len(X)), "clases": {}, "cv": {}, "avisos": []}
+    reporte = {"n": int(len(X)), "clases": {}, "cv": {}, "hiperparams": {},
+               "avisos": []}
     if len(X) < 10 or y.nunique() < 2:
         reporte["avisos"].append(
             "Muestra insuficiente para ML supervisado; el pronóstico se apoya "
@@ -237,39 +341,57 @@ def entrenar_modelos_ml(dataset: pd.DataFrame, random_state: int = 42):
         return {}, reporte
     reporte["clases"] = y.value_counts().to_dict()
 
-    min_clase = y.value_counts().min()
+    min_clase = int(y.value_counts().min())
     n_splits = int(min(5, max(2, min_clase)))
     cv = StratifiedKFold(n_splits=n_splits, shuffle=True, random_state=random_state)
+    # CV para la calibración (puede ser más chica para abaratar el bucle OOF).
+    k_cal = int(min(calib_cv or n_splits, max(2, min_clase)))
+    cv_cal = StratifiedKFold(n_splits=k_cal, shuffle=True, random_state=random_state)
 
-    definiciones = {
-        # Nota: en sklearn reciente el logit es multinomial por defecto con
-        # el solver lbfgs (el parámetro multi_class fue removido).
-        "logit": make_pipeline(
-            StandardScaler(),
-            LogisticRegression(max_iter=2000, C=1.0)),
-        "rf": RandomForestClassifier(
-            n_estimators=400, max_depth=4, min_samples_leaf=3,
-            random_state=random_state),
-        "gbm": GradientBoostingClassifier(
-            n_estimators=200, max_depth=2, learning_rate=0.05,
-            random_state=random_state),
-    }
-
+    zoo = _zoo_modelos(random_state)
     modelos = {}
-    for nombre, est in definiciones.items():
+    for nombre, (est, espacio) in zoo.items():
+        base = clone(est)
         try:
-            scores = cross_val_score(est, X, y, cv=cv,
-                                     scoring="neg_log_loss")
-            reporte["cv"][nombre] = float(-scores.mean())
-        except Exception as e:   # CV puede fallar con clases muy chicas
-            reporte["avisos"].append(f"CV no disponible para {nombre}: {e}")
-        # Calibración (sigmoide, robusta con pocos datos)
-        try:
-            modelo = CalibratedClassifierCV(est, method="sigmoid", cv=cv)
-            modelo.fit(X, y)
-        except Exception:
-            est.fit(X, y)
-            modelo = est
+            if hiperparams is not None and nombre in hiperparams:
+                base.set_params(**hiperparams[nombre])
+                bp = hiperparams[nombre]
+            elif tune and espacio:
+                bus = RandomizedSearchCV(
+                    base, espacio, n_iter=n_iter, scoring="neg_log_loss",
+                    cv=cv, random_state=random_state, n_jobs=1, refit=True,
+                    error_score="raise")
+                bus.fit(X, y)
+                base = bus.best_estimator_
+                bp = bus.best_params_
+            else:
+                bp = {}
+            reporte["hiperparams"][nombre] = bp
+        except Exception as e:
+            reporte["avisos"].append(f"Tuning no disponible para {nombre}: {e}")
+            base = clone(est)
+            reporte["hiperparams"][nombre] = {}
+
+        # Log-loss CV del estimador (sólo si se pide; se omite en el bucle OOF).
+        if calcular_cv:
+            try:
+                scores = cross_val_score(clone(base), X, y, cv=cv,
+                                         scoring="neg_log_loss")
+                reporte["cv"][nombre] = float(-scores.mean())
+            except Exception as e:
+                reporte["avisos"].append(f"CV no disponible para {nombre}: {e}")
+
+        # Calibración sigmoide (sólo en los modelos finales; se omite en el OOF
+        # por costo: para SELECCIONAR modelos basta la probabilidad sin calibrar).
+        if calibrar:
+            try:
+                modelo = CalibratedClassifierCV(clone(base), method="sigmoid",
+                                                cv=cv_cal)
+                modelo.fit(X, y)
+            except Exception:
+                modelo = clone(base).fit(X, y)
+        else:
+            modelo = clone(base).fit(X, y)
         modelos[nombre] = modelo
 
     return modelos, reporte
@@ -327,7 +449,8 @@ def _suavizar(P, eps=1e-6):
 
 
 def evaluar_modelos(dataset, equipos, n_splits=5, random_state=42,
-                    pesos_ensemble=None, devolver_oof=False):
+                    pesos_ensemble=None, devolver_oof=False,
+                    nu=0.28, lambda_prior=8.0, hiperparams=None):
     """Compara los modelos 1/X/2 por validación cruzada OUT-OF-FOLD.
 
     Sobre los partidos YA jugados, en cada fold se reentrenan Dixon-Coles y los
@@ -357,24 +480,41 @@ def evaluar_modelos(dataset, equipos, n_splits=5, random_state=42,
         return pd.DataFrame(), "ensemble"
 
     rating = dict(zip(equipos["pais"], equipos["rating_base"].astype(float)))
-    cand = ["elo", "dc", "logit", "rf", "gbm", "ensemble"]
+
+    # Hiperparámetros del ML elegidos UNA vez (auto-tuning) sobre todos los
+    # jugados; la evaluación OOF reentrena por fold con ESOS hiperparámetros
+    # (rápido y estable; ligero optimismo asumido por el tamaño de muestra).
+    # Si se pasan ``hiperparams`` ya buscados, se reusan (evita re-tunear).
+    if hiperparams is None:
+        _, rep_full = entrenar_modelos_ml(df, random_state=random_state, tune=True)
+        hiper = rep_full.get("hiperparams", {})
+    else:
+        hiper = hiperparams
+    nombres_ml = list(hiper.keys())
+
+    cand = ["elo", "dc"] + nombres_ml + ["ensemble"]
     oof = {m: np.full((n, 3), np.nan) for m in cand}
 
     min_clase = int(pd.Series(y).value_counts().min())
     k = int(min(n_splits, max(2, min_clase)))
     skf = StratifiedKFold(n_splits=k, shuffle=True, random_state=random_state)
     for tr_idx, te_idx in skf.split(np.zeros(n), y):
-        dc_f = DixonColes(equipos).entrenar(df.iloc[tr_idx])
-        ml_f, _ = entrenar_modelos_ml(df.iloc[tr_idx], random_state=random_state)
+        dc_f = DixonColes(equipos, lambda_prior=lambda_prior).entrenar(df.iloc[tr_idx])
+        # OOF reentrena con los hiperparámetros ya elegidos y CALIBRA (cv chica)
+        # para que la evaluación refleje exactamente lo que se usa al predecir.
+        ml_f, _ = entrenar_modelos_ml(df.iloc[tr_idx], random_state=random_state,
+                                      tune=False, hiperparams=hiper,
+                                      calibrar=True, calcular_cv=False, calib_cv=3)
         for i in te_idx:
             row = df.iloc[i]
             a, b, anf = row["equipo_a"], row["equipo_b"], float(row["anfitrion"])
-            p_elo = elo_prob_1x2(rating.get(a, 1500.0), rating.get(b, 1500.0), anf)
+            p_elo = elo_prob_1x2(rating.get(a, 1500.0), rating.get(b, 1500.0),
+                                 anf, nu=nu)
             p_dc = dc_f.prob_1x2(a, b, anf)
             oof["elo"][i] = p_elo
             oof["dc"][i] = p_dc
             p_ml = predecir_ml(ml_f, df.iloc[[i]]) if ml_f else {}
-            for nombre in ("logit", "rf", "gbm"):
+            for nombre in nombres_ml:
                 if nombre in p_ml:
                     oof[nombre][i] = p_ml[nombre]
             oof["ensemble"][i] = ensemble_1x2(p_elo, p_dc, p_ml or None,
@@ -399,6 +539,117 @@ def evaluar_modelos(dataset, equipos, n_splits=5, random_state=42,
     if devolver_oof:
         return tabla, mejor, oof, np.asarray(y)
     return tabla, mejor
+
+
+def seleccionar_top(tabla, k=3, excluir=("ensemble",)):
+    """Elige los ``k`` mejores modelos BASE por log-loss y arma sus pesos.
+
+    Excluye 'ensemble' del pool (no tiene sentido promediar un promedio). Los
+    pesos son ∝ 1/log_loss (mejor modelo, más peso), normalizados a suma 1.
+
+    Devuelve ``(nombres, pesos)``: lista de nombres y dict {nombre: peso}.
+    """
+    if tabla is None or len(tabla) == 0:
+        return ["ensemble"], {"ensemble": 1.0}
+    t = tabla[~tabla["modelo"].isin(excluir)].reset_index(drop=True)
+    if len(t) == 0:
+        return ["ensemble"], {"ensemble": 1.0}
+    t = t.sort_values("log_loss").head(k)
+    nombres = t["modelo"].tolist()
+    inv = (1.0 / t["log_loss"].clip(lower=1e-6)).values
+    w = inv / inv.sum()
+    pesos = {n: float(wi) for n, wi in zip(nombres, w)}
+    return nombres, pesos
+
+
+def blend_1x2(probs_por_modelo: dict, pesos: dict) -> tuple[float, float, float]:
+    """Promedio ponderado de (p1,pX,p2) sobre los modelos indicados en ``pesos``.
+
+    ``probs_por_modelo`` = {nombre: (p1,pX,p2)}. Sólo se usan los nombres que
+    estén en ``pesos`` y presentes en el dict. Renormaliza al final.
+    """
+    acum = np.zeros(3)
+    total = 0.0
+    for nombre, w in pesos.items():
+        p = probs_por_modelo.get(nombre)
+        if p is None:
+            continue
+        acum += w * np.array(p, dtype=float)
+        total += w
+    if total <= 0:
+        # fallback: promedio simple de lo que haya
+        vals = [np.array(p, dtype=float) for p in probs_por_modelo.values()]
+        if not vals:
+            return (1 / 3, 1 / 3, 1 / 3)
+        acum = np.mean(vals, axis=0); total = 1.0
+    acum = acum / total
+    return tuple(acum / acum.sum())
+
+
+def _oof_elo_dc(df, equipos, nu, lambda_prior, k, random_state):
+    """Log-loss out-of-fold MÍNIMO entre Elo, Dixon-Coles y su promedio.
+
+    Sólo reentrena Dixon-Coles por fold (Elo es paramétrico). Es barato: lo usa
+    ``calibrar_parametros`` para barrer la grilla de nu/lambda sin tocar el ML.
+    """
+    from sklearn.model_selection import StratifiedKFold
+    from sklearn.metrics import log_loss
+    y = df["resultado"].astype(str).values
+    clases = ["1", "X", "2"]
+    n = len(df)
+    rating = dict(zip(equipos["pais"], equipos["rating_base"].astype(float)))
+    oof_elo = np.full((n, 3), np.nan)
+    oof_dc = np.full((n, 3), np.nan)
+    skf = StratifiedKFold(n_splits=k, shuffle=True, random_state=random_state)
+    for tr, te in skf.split(np.zeros(n), y):
+        dc = DixonColes(equipos, lambda_prior=lambda_prior).entrenar(df.iloc[tr])
+        for i in te:
+            r = df.iloc[i]
+            a, b, anf = r["equipo_a"], r["equipo_b"], float(r["anfitrion"])
+            oof_elo[i] = elo_prob_1x2(rating.get(a, 1500.0), rating.get(b, 1500.0),
+                                      anf, nu=nu)
+            oof_dc[i] = dc.prob_1x2(a, b, anf)
+    ll_elo = log_loss(y, _suavizar(oof_elo), labels=clases)
+    ll_dc = log_loss(y, _suavizar(oof_dc), labels=clases)
+    ll_avg = log_loss(y, _suavizar((oof_elo + oof_dc) / 2.0), labels=clases)
+    return float(min(ll_elo, ll_dc, ll_avg))
+
+
+def calibrar_parametros(dataset, equipos, random_state=42,
+                        grid_nu=(0.20, 0.26, 0.32),
+                        grid_lambda=(4.0, 8.0, 16.0)):
+    """Auto-calibra los parámetros econométricos por validación out-of-fold.
+
+    Busca el ``nu`` (nivel de empate del Elo) y el ``lambda_prior`` (fuerza de
+    la regularización de Dixon-Coles) que MINIMIZAN el log-loss out-of-fold de
+    Elo/Dixon-Coles (los únicos modelos que dependen de esos parámetros). Es una
+    búsqueda chica y barata (no toca el zoo ML), y evita el sobreajuste de
+    afinar a mano. Devuelve ``{'nu':..., 'lambda_prior':..., 'detalle': df}``.
+
+    Nota: ``K`` (Elo) y ``FACTOR_LOCALIA_KO`` NO se calibran aquí porque no tienen
+    señal de validación con los datos actuales (K requiere CV cronológica con
+    partidos futuros; la localía KO sólo afecta eliminatorias aún sin jugar).
+    """
+    import itertools
+    df = dataset[dataset["jugado"]].reset_index(drop=True)
+    y = df["resultado"].astype(str).values
+    medio = {"nu": grid_nu[len(grid_nu) // 2],
+             "lambda_prior": grid_lambda[len(grid_lambda) // 2]}
+    if len(df) < 10 or len(set(y)) < 2:
+        return {"nu": medio["nu"], "lambda_prior": medio["lambda_prior"],
+                "log_loss": float("nan"), "detalle": pd.DataFrame()}
+    k = int(min(5, max(2, int(pd.Series(y).value_counts().min()))))
+
+    filas, mejor, mejor_ll = [], medio, np.inf
+    for nu, lam in itertools.product(grid_nu, grid_lambda):
+        ll = _oof_elo_dc(df, equipos, nu, lam, k, random_state)
+        filas.append({"nu": nu, "lambda_prior": lam, "log_loss": round(ll, 4)})
+        if ll < mejor_ll:
+            mejor_ll = ll
+            mejor = {"nu": nu, "lambda_prior": lam}
+    detalle = pd.DataFrame(filas).sort_values("log_loss").reset_index(drop=True)
+    return {"nu": mejor["nu"], "lambda_prior": mejor["lambda_prior"],
+            "log_loss": round(mejor_ll, 4), "detalle": detalle}
 
 
 def tabla_calibracion(P, y, n_bins=10):
@@ -456,13 +707,19 @@ def tabla_calibracion(P, y, n_bins=10):
 # ===========================================================================
 def pronostico_partidos(dataset, equipos, dixon_coles, modelos_ml=None,
                         solo_pendientes=True, modelo="ensemble",
-                        pesos_ensemble=None):
+                        pesos_ensemble=None, modelos_top=None, pesos_top=None,
+                        nu=0.28):
     """Construye la tabla de pronóstico por partido del fixture.
 
-    Para cada partido devuelve: P(1/X/2) del ensemble, goles esperados de cada
-    equipo (Dixon-Coles) y el marcador más probable. Por defecto sólo los
-    partidos NO jugados (los pronosticables); con ``solo_pendientes=False``
-    incluye todos.
+    Para cada partido devuelve: P(1/X/2), goles esperados de cada equipo
+    (Dixon-Coles) y el marcador más probable. Por defecto sólo los partidos NO
+    jugados; con ``solo_pendientes=False`` incluye todos.
+
+    Predictor 1/X/2 (en orden de prioridad):
+      * si se pasa ``modelos_top`` + ``pesos_top`` -> **blend ponderado de los
+        top-3** modelos (lo que devuelve ``seleccionar_top``);
+      * si ``modelo`` es 'elo'/'dc'/uno del zoo -> ese modelo;
+      * en otro caso -> ensemble de pesos fijos (compatibilidad).
     """
     rating = dict(zip(equipos["pais"], equipos["rating_base"].astype(float)))
     sede = dict(zip(equipos["pais"], equipos["es_sede"].fillna(0).astype(float)))
@@ -475,7 +732,7 @@ def pronostico_partidos(dataset, equipos, dixon_coles, modelos_ml=None,
             continue
         anf = sede.get(a, 0) - sede.get(b, 0)
         # Elo
-        p_elo = elo_prob_1x2(rating[a], rating[b], anf)
+        p_elo = elo_prob_1x2(rating[a], rating[b], anf, nu=nu)
         # Dixon-Coles
         p_dc = dixon_coles.prob_1x2(a, b, anf)
         lam, mu = dixon_coles.goles_esperados(a, b, anf)
@@ -485,12 +742,15 @@ def pronostico_partidos(dataset, equipos, dixon_coles, modelos_ml=None,
         if modelos_ml:
             fila_feat = pd.DataFrame([{c: m.get(c, 0.0) for c in COLUMNAS_FEATURES}])
             p_ml = predecir_ml(modelos_ml, fila_feat)
-        # Selección del predictor 1/X/2 según ``modelo`` (lo elige evaluar_modelos).
-        if modelo == "elo":
+        # Predictor 1/X/2.
+        if modelos_top and pesos_top:
+            probs = {"elo": p_elo, "dc": p_dc, **(p_ml or {})}
+            p1, pX, p2 = blend_1x2(probs, pesos_top)
+        elif modelo == "elo":
             p1, pX, p2 = p_elo
         elif modelo == "dc":
             p1, pX, p2 = p_dc
-        elif modelo in ("logit", "rf", "gbm") and p_ml and modelo in p_ml:
+        elif p_ml and modelo in p_ml:
             p1, pX, p2 = p_ml[modelo]
         else:
             p1, pX, p2 = ensemble_1x2(p_elo, p_dc, p_ml, pesos_ensemble)

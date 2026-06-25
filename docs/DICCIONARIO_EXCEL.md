@@ -15,6 +15,14 @@ y **cómo cargar resultados nuevos** para que el pronóstico se recalcule solo.
   abrir con `data_only=True`).
 - Flags `Sí`/`No` → 1/0. Celdas vacías → NaN (toleradas en todo el pipeline).
 - La hoja **`Léeme`** es documentación en prosa: se ignora para el modelo.
+- **Datos curados (jun-2026):** las columnas *Puntaje DT* (hoja DTs), el registro y
+  *Puntaje clasif. ponderado* (Clasificatorias) y *Jug. en top-5 ligas*
+  (Predictores_país) se generan con `scripts/enriquecer_excel.py` y son
+  **estimaciones documentadas** (~early-2026), no cifras oficiales. Para corregirlas,
+  editá los diccionarios del script y re-ejecutalo (`python scripts/enriquecer_excel.py`).
+- Las hojas `Posiciones` y los slots 1º/2º de `Eliminatorias` usan **fórmulas** que se
+  auto-actualizan al cargar resultados en `Fixture_Grupos`; son para ver el Excel,
+  Python recalcula la clasificación y el bracket por su cuenta.
 
 ## Hojas del libro (9)
 
@@ -23,9 +31,9 @@ y **cómo cargar resultados nuevos** para que el pronóstico se recalcule solo.
 | `Léeme` | 23 | nota en prosa | se ignora |
 | `Selecciones` | 48 (+nota) | **clave** | tabla maestra de equipos |
 | `Historial` | 48 | con datos | features de prestigio/experiencia |
-| `DTs` | 48 | con datos | features opcionales de contexto |
-| `Clasificatorias` | — | **vacía** | se ignora (plantilla) |
-| `Predictores_país` | 48 | **valor de plantel cargado** | `d_valor_plantel` (feature ML); resto de columnas vacío |
+| `DTs` | 48 | **+ Puntaje DT (0-100)** | feature `d_dt` (trayectoria DT) |
+| `Clasificatorias` | 48 | **completada (estimada)** | feature `d_clasif` (col. *Puntaje clasif. ponderado* = %Pts × dificultad conf.) |
+| `Predictores_país` | 48 | **valor, edad y top-5 cargados** | `d_valor_plantel`, `d_edad`, `d_top5`; PIB/población vacíos |
 | `Fixture_Grupos` | 72 | **se carga acá** | resultados de grupos (input principal) |
 | `Posiciones` | 48 | se calcula sola | no se usa directo (se recalcula en código) |
 | `Eliminatorias` | 34 | **se carga acá** | cuadro final + resultados de la fase final |

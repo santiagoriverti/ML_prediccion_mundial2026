@@ -1,8 +1,9 @@
 # MEMORIA DEL PROYECTO — ML_prediccion_mundial2026
 
 > Documento maestro para **retomar el proyecto desde cualquier sesión**.
-> Última actualización: **2026-06-25**. Mantené este archivo al día cuando cambien
-> decisiones o parámetros importantes.
+> Última actualización: **2026-06-25** (variables curadas DT/clasificatoria/top-5,
+> zoo de ML con auto-tuning + blend top-3, auto-calibración, fijado de KO, fórmulas
+> Excel). Mantené este archivo al día cuando cambien decisiones o parámetros.
 
 Documentos complementarios:
 - [`DICCIONARIO_EXCEL.md`](DICCIONARIO_EXCEL.md) — cómo es el Excel real, hoja por
@@ -34,6 +35,27 @@ se cargan nuevos resultados en el Excel y se reejecuta el notebook.
 - **Valor de plantel** (Transfermarkt jun-2026) y **edad promedio del plantel**
   (RotoWire) cargados para las 48 y conectados como features `d_valor_plantel`,
   `d_edad`.
+- **(jun-2026) Tres features nuevas curadas** (script `scripts/enriquecer_excel.py`):
+  `d_dt` (puntaje de trayectoria del DT, selección+clubes 0-100, hoja DTs),
+  `d_clasif` (puntaje de la clasificatoria **ponderado por dificultad de
+  confederación**, hoja Clasificatorias) y `d_top5` (proporción del plantel en las
+  5 grandes ligas, hoja Predictores_país). Son **estimaciones documentadas**
+  ~early-2026, no cifras oficiales (ver §8). Total: **13 features**.
+- **(jun-2026) Zoo de modelos ML con auto-tuning**: logit, RandomForest, ExtraTrees,
+  GradientBoosting, HistGradientBoosting + **XGBoost/LightGBM** (import opcional,
+  degrada con elegancia). Hiperparámetros por `RandomizedSearchCV`. La predicción
+  1/X/2 final es el **blend ponderado de los 3 mejores** modelos por CV out-of-fold.
+- **(jun-2026) Auto-calibración** de `nu` (Elo) y `lambda_prior` (Dixon-Coles) por
+  log-loss out-of-fold (`calibrar_parametros`). `K` y `FACTOR_LOCALIA_KO` quedan
+  fijos (sin señal de validación; ver §5).
+- **(jun-2026) Resultados de eliminatorias fijados**: al cargar goles de 32avos en
+  la hoja Eliminatorias, esos partidos quedan como hechos fijos en la simulación y
+  **los equipos eliminados caen a 0** (validado: forzar la derrota de Brasil en
+  32avos lleva su prob. de campeón de ~6% a 0%).
+- **(jun-2026) Excel auto-actualizable**: Posiciones calcula la tabla de cada grupo
+  por fórmula desde Fixture_Grupos y Eliminatorias resuelve los slots 1º/2º por
+  fórmula (INDEX/SUMPRODUCT) al cargar resultados. Los terceros y el bracket
+  completo los resuelve Python (fuente de verdad).
 - **Localía moderada en eliminatorias** (`FACTOR_LOCALIA_KO=0.3`): los anfitriones
   suben moderado sin desbordar (ver §5).
 - **Evaluación y selección de modelos**: `evaluar_modelos` compara Elo, Dixon-Coles,
@@ -95,6 +117,11 @@ Excel  ─► data_loader.cargar_datos()        → equipos, fixture, bracket
 | **8 mejores terceros** | Ranking por (pts, DG, GF) y asignación a los slots `3º X/Y/Z` del bracket por **matching bipartito** respetando la elegibilidad de cada slot. | Reproduce la regla FIFA usando los cruces que ya trae la hoja `Eliminatorias`. |
 | **Cuadro post-32avos** | Sólo los 32avos están definidos en el Excel; las rondas siguientes se arman como **árbol binario** en el orden listado. | La hoja deja en blanco 16avos→Final. Es adaptable si se completan esos slots. |
 | **Knockouts: empate** | Se resuelve por **fuerza** (prob. Elo), no 50/50, simulando prórroga/penales. | Más realista que una moneda. |
+| **3 features nuevas (DT, clasificatoria, top-5)** | Datos **curados** (estimaciones ~early-2026), no oficiales. El modelo usa diferencias A-B, robustas a errores chicos. Clasificatoria = %Pts × dificultad de confederación (ponderación pedida). | El Excel no traía estos datos; aportan señal ordinal (mejor DT / mejor clasificatoria / más jugadores de elite). |
+| **Zoo de ML + auto-tuning + top-3 blend** | logit/RF/ExtraTrees/GBM/HistGBM + XGBoost/LightGBM (opcionales). Hiperparámetros por `RandomizedSearchCV`. Predicción 1/X/2 = **blend ponderado de los 3 mejores** por CV out-of-fold. Calibración sigmoide consistente entre OOF y modelos finales. | "Modelos avanzados" + no apostar a uno solo. Con N=54 el núcleo Elo/DC suele liderar; el blend lo combina con el mejor ML de forma data-driven. |
+| **Auto-calibración de parámetros** | `nu`/`lambda_prior` se eligen por log-loss out-of-fold (`calibrar_parametros`). | Evita afinar a mano. `K` y `FACTOR_LOCALIA_KO` quedan fijos: no hay señal de validación (K necesita CV cronológica con partidos futuros; la localía KO sólo afecta eliminatorias aún sin jugar). |
+| **Resultados de KO fijados** | Goles cargados en 32avos ⇒ partido fijo; el perdedor queda eliminado en todas las corridas. Rondas posteriores: árbol binario (cuando se carguen). | "Descartar a los eliminados". Validado: derrota de Brasil en 32avos lleva su prob. de campeón de ~6% a 0%. |
+| **Rendimiento del notebook** | Tuning UNA vez (reusado en el OOF), calibración con CV chica en el OOF, grilla de calibración acotada. ~3-3,5 min de punta a punta. | "Ejecutar todo" en Colab en un tiempo razonable sin sacrificar la consistencia metodológica. |
 
 ## 6. Parámetros clave y dónde tocarlos
 
@@ -113,12 +140,23 @@ Excel  ─► data_loader.cargar_datos()        → equipos, fixture, bracket
   - `bracket_mas_probable(...)` — cuadro de 32avos del escenario más probable
     (nombres de selección) que llena `Equipo 1`/`Equipo 2` de Eliminatorias.
 - `src/models.py`
-  - `evaluar_modelos(dataset, equipos, devolver_oof=False)` — comparación CV out-of-fold
-    + mejor modelo; con `devolver_oof=True` agrega `(oof, y)` para la calibración.
+  - `_zoo_modelos(rs)` — define el zoo (sklearn + XGBoost/LightGBM opcionales) con su
+    espacio de búsqueda. `XGBClasifStr` envuelve XGBoost para clases string 1/X/2.
+  - `entrenar_modelos_ml(ds, tune=True, hiperparams=None, calibrar=True, ...)` —
+    auto-tuning (`RandomizedSearchCV`) + calibración sigmoide. `tune=False`+`hiperparams`
+    reusa hiperparámetros (lo usa el OOF). `calib_cv` abarata la calibración en el OOF.
+  - `calibrar_parametros(ds, eq)` — auto-calibra `nu`/`lambda_prior` por log-loss OOF
+    (grilla chica, sólo Elo+DC; barato).
+  - `evaluar_modelos(ds, eq, devolver_oof, nu, lambda_prior, hiperparams)` — CV
+    out-of-fold de Elo/DC/zoo/ensemble; `devolver_oof=True` → `(tabla, mejor, oof, y)`.
+  - `seleccionar_top(tabla, k=3)` — los k mejores modelos base + pesos ∝ 1/log_loss.
+  - `blend_1x2(probs, pesos)` — blend ponderado de (p1,pX,p2).
   - `tabla_calibracion(P, y, n_bins=10)` — reliability + ECE de una matriz de probs OOF.
-  - `pronostico_partidos(..., modelo="ensemble")` — `modelo` elige el predictor 1/X/2.
+  - `pronostico_partidos(..., modelos_top, pesos_top, nu)` — predice con el blend top-3.
 - `src/viz.py`
   - `grafico_calibracion(tabla_calib, ece, modelo)` — reliability diagram a `outputs/`.
+- `scripts/enriquecer_excel.py` — re-genera el Excel con los datos curados (DTs,
+  Clasificatorias, top-5) y las fórmulas (Posiciones, slots de Eliminatorias).
 
 ## 7. Probar el pipeline en local (sin Colab)
 
@@ -149,9 +187,18 @@ print(res["campeon"].head(12))
 - **No hay columna Elo** ni hoja **`Partidos_modelo`** → se reconstruyen en código.
 - Una **fila de nota al pie** en `Selecciones` se colaba como "selección 49"
   → el loader la filtra exigiendo `grupo` + `confederacion` válidos (quedan 48).
-- Hoja **`Clasificatorias`** está **vacía** → se ignora. **`Predictores_país`** tiene
-  cargado el **valor de plantel (€ MM, Transfermarkt jun-2026)** de las 48 selecciones;
-  el resto de sus columnas (PIB, población, top-5 ligas) sigue vacío.
+- Hoja **`Clasificatorias`** **completada** (jun-2026, vía `scripts/enriquecer_excel.py`):
+  registro estimado de la eliminatoria 2026 (PJ/PG/PE/PP/GF/GC) + **Dificultad conf.**
+  (UEFA 1.00, CONMEBOL 0.95, CAF 0.52, CONCACAF 0.50, AFC 0.48, OFC 0.20) + **Puntaje
+  clasif. ponderado** = %Pts × dificultad. Anfitriones sin eliminatoria → proxy 0.70×dif.
+- **`Predictores_país`**: **valor de plantel** y **edad** cargados; ahora también
+  **`Jug. en top-5 ligas`** (conteo sobre plantel de 26 → proporción en `features`).
+  PIB/población siguen vacías (no usadas).
+- Hoja **`DTs`**: agregadas columnas **Punt. selección / Punt. clubes / Puntaje DT
+  (0-100)** con la trayectoria curada de cada DT (rúbrica en el script).
+- **Las celdas que usa el MODELO se escriben como VALORES literales** (pandas las lee
+  sin depender de que Excel recalcule); Posiciones y los slots 1º/2º de Eliminatorias
+  son **fórmulas** (sólo para la vista del Excel; Python recalcula todo aparte).
 - **Aclaración importante sobre features:** `data_loader` *carga* `Predictores_país` y
   `Clasificatorias` a la tabla de equipos, pero el modelo **sólo usa** las columnas de
   `COLUMNAS_FEATURES` (`features.py`). Hoy la única columna de esas hojas conectada al
@@ -182,15 +229,22 @@ print(res["campeon"].head(12))
   más probable) en `Equipo 1`/`Equipo 2`; slots de posición preservados en `Slot 1`/2.
 - (Hecho jun-2026) **Evaluación + selección de modelos** (`evaluar_modelos`, CV
   out-of-fold) y notebook reescrito sin emojis usando el mejor modelo.
-- **NO incluidos a propósito (decisión profesional):**
-  - **Jugadores en top-5 ligas**: sin fuente agregada limpia (habría que clasificar
-    ~1.250 jugadores), post-corte (planteles definitivos jun-2026) y **redundante**
-    con el valor de plantel (correlación alta). La columna queda lista si se llena.
-  - **Clasificatorias (récord de eliminatorias)**: PJ/PG/PE/PP/GF/GC **no son
-    comparables entre confederaciones** (formatos, # de partidos y rivales muy
-    distintos: OFC vs CONMEBOL) y son redundantes con el ranking FIFA. Incluirlas en
-    crudo metería sesgo/ruido, no señal. El loader las leería si se cargan, pero no se
-    conectaron como feature por esto.
+- (Hecho jun-2026) **Puntaje de DT** (trayectoria selección+clubes), **Clasificatorias
+  ponderadas por confederación** y **% en top-5 ligas** cargados y conectados como
+  features `d_dt`, `d_clasif`, `d_top5` (ver §2 y §8). Datos curados (estimaciones).
+- (Hecho jun-2026) **Zoo de ML avanzado + auto-tuning + blend top-3** y
+  **auto-calibración** de `nu`/`lambda_prior` (ver §5).
+- (Hecho jun-2026) **Fijado de resultados de eliminatorias** en la simulación y
+  **fórmulas Excel** (Posiciones + slots 1º/2º) que se auto-actualizan al cargar grupos.
+- **Sobre la calidad de los datos curados:** las cifras de DT, clasificatorias y
+  top-5 son **estimaciones** (~early-2026), no oficiales. Si se consiguen datos
+  exactos, editar los diccionarios de `scripts/enriquecer_excel.py` y re-correrlo.
+- **Mejoras futuras de modelado:**
+  - Reemplazar estimaciones curadas por datos oficiales (récords de eliminatoria
+    reales, conteo exacto de jugadores en top-5).
+  - Recalibrar el blend (temperature scaling / isotónica) si el ECE lo amerita.
+  - Calibrar `K` y `FACTOR_LOCALIA_KO` con CV cronológica a medida que se jueguen
+    más partidos (incl. eliminatorias).
 - (Opcional) Para que el valor de plantel/edad pesen más, **blendearlos en
   `rating_base`** (núcleo Elo/DC) o subir el peso del ML en `ensemble_1x2`.
 - (Opcional) Mapear partido→estadio para activar el feature de **altitud** (hoy 0) y
