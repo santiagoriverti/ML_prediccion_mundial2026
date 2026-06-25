@@ -83,6 +83,9 @@ _FEATURES_DIF = [
     ("titulos", "d_titulos"),
     ("apariciones", "d_apariciones"),
     ("mejor_resultado_ord", "d_mejor_result"),
+    # Valor de plantel (Transfermarkt) -> proxy de calidad complementario al ranking.
+    # Sólo aporta si la hoja Predictores_país tiene la columna cargada; si no, queda NaN.
+    ("pred_valor_plantel_(€_mm)", "d_valor_plantel"),
 ]
 
 
@@ -121,6 +124,10 @@ def construir_dataset_partidos(equipos: pd.DataFrame,
             # Para el ranking, "mejor" es menor -> invertimos para que +favorezca a A
             if col == "ranking_fifa" and pd.notna(dif):
                 dif = -dif
+            # Valor de plantel: lo llevamos a decenas de € MM para que su diferencia
+            # quede en una escala comparable a d_puntos/d_rating (evita que domine al logit).
+            if col == "pred_valor_plantel_(€_mm)" and pd.notna(dif):
+                dif = dif / 10.0
             fila[nombre] = dif
 
         # Anfitrión: 1 si A es sede y B no; -1 si B es sede y A no; 0 si ambos/ninguno
@@ -150,7 +157,7 @@ def construir_dataset_partidos(equipos: pd.DataFrame,
 # Lista canónica de columnas de features para los modelos supervisados.
 COLUMNAS_FEATURES = [
     "d_rating", "d_ranking", "d_puntos", "d_titulos",
-    "d_apariciones", "d_mejor_result", "anfitrion", "altitud",
+    "d_apariciones", "d_mejor_result", "d_valor_plantel", "anfitrion", "altitud",
 ]
 
 

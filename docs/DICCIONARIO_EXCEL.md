@@ -25,7 +25,7 @@ y **cómo cargar resultados nuevos** para que el pronóstico se recalcule solo.
 | `Historial` | 48 | con datos | features de prestigio/experiencia |
 | `DTs` | 48 | con datos | features opcionales de contexto |
 | `Clasificatorias` | — | **vacía** | se ignora (plantilla) |
-| `Predictores_país` | — | **vacía** | se ignora (se cargaría sola si tuviera datos) |
+| `Predictores_país` | 48 | **valor de plantel cargado** | `d_valor_plantel` (feature ML); resto de columnas vacío |
 | `Fixture_Grupos` | 72 | **se carga acá** | resultados de grupos (input principal) |
 | `Posiciones` | 48 | se calcula sola | no se usa directo (se recalcula en código) |
 | `Eliminatorias` | 34 | **se carga acá** | cuadro final + resultados de la fase final |
@@ -61,9 +61,16 @@ Columnas: `N°` · `País` · `Cód.` · `Grupo` (A–L) · `Pos. grupo` (1–4)
 - Se derivan `dt_extranjero` (1 si la nacionalidad del DT ≠ país) y
   `dt_antiguedad` (2026 − año en el cargo). Features opcionales.
 
-### `Clasificatorias` (vacía) y `Predictores_país` (vacía)
-Plantillas hoy sin datos → **se ignoran**. Si cargás datos, el loader incorpora
-automáticamente sólo las columnas con valores (no hay que tocar código).
+### `Clasificatorias` (vacía) y `Predictores_país` (valor de plantel cargado)
+`Clasificatorias` sigue vacía → se ignora. `Predictores_país` tiene cargado el
+**valor de plantel (€ MM, Transfermarkt jun-2026)** de las 48 selecciones.
+
+⚠️ **Cargar una columna NO la convierte sola en feature del modelo.** El loader la
+sube a la tabla de equipos (prefijo `pred_`), pero el modelo sólo usa las columnas
+listadas en `COLUMNAS_FEATURES` (`features.py`). Para que una columna nueva pese en
+la predicción hay que **agregarla a `_FEATURES_DIF` y a `COLUMNAS_FEATURES`** (así se
+hizo con `d_valor_plantel`). El resto de columnas de estas hojas se cargan pero no
+entran al modelo.
 
 ### `Fixture_Grupos` (72 = 12 grupos × 6 partidos) — ACÁ CARGÁS RESULTADOS DE GRUPOS
 `ID` · `Grupo` · `Jornada` (1/2/3) · `Equipo A` · `Equipo B` ·

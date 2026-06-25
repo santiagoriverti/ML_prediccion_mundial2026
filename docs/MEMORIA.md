@@ -119,7 +119,14 @@ print(res["campeon"].head(12))
 - **No hay columna Elo** ni hoja **`Partidos_modelo`** → se reconstruyen en código.
 - Una **fila de nota al pie** en `Selecciones` se colaba como "selección 49"
   → el loader la filtra exigiendo `grupo` + `confederacion` válidos (quedan 48).
-- Hojas **`Clasificatorias`** y **`Predictores_país`** están **vacías** → se ignoran.
+- Hoja **`Clasificatorias`** está **vacía** → se ignora. **`Predictores_país`** tiene
+  cargado el **valor de plantel (€ MM, Transfermarkt jun-2026)** de las 48 selecciones;
+  el resto de sus columnas (PIB, población, top-5 ligas) sigue vacío.
+- **Aclaración importante sobre features:** `data_loader` *carga* `Predictores_país` y
+  `Clasificatorias` a la tabla de equipos, pero el modelo **sólo usa** las columnas de
+  `COLUMNAS_FEATURES` (`features.py`). Hoy la única columna de esas hojas conectada al
+  modelo es **`d_valor_plantel`** (derivada del valor de plantel). El resto se carga
+  pero no entra al modelo salvo que se agregue a `_FEATURES_DIF` + `COLUMNAS_FEATURES`.
 - Encabezado en la **fila 2**, datos desde la **fila 3** (`header=1`).
 - Clave de unión entre hojas: **`País`** (español con acentos), normalizada con strip.
 - Flags `Sí`/`No` → 1/0. Detalle completo en `DICCIONARIO_EXCEL.md`.
@@ -128,9 +135,15 @@ print(res["campeon"].head(12))
 
 - Cargar el resto de la fecha 3 de grupos (faltan 18 partidos) a medida que se jueguen.
 - Completar la hoja **`Eliminatorias`** con resultados de la fase final cuando empiece.
-- (Opcional) Si más adelante se carga **`Predictores_país`** (valor de plantel,
-  jugadores en top-5 ligas, etc.), `data_loader` ya los incorpora automáticamente
-  como features (sólo carga columnas con datos).
+- (Hecho jun-2026) Cargado **valor de plantel** en `Predictores_país` y conectado al
+  modelo como feature `d_valor_plantel` (mejoró el log-loss CV de los 3 modelos ML;
+  el titular casi no se mueve porque el ensemble pondera más a Dixon-Coles + Elo).
+- (Opcional) Agregar **jugadores en top-5 ligas** como feature: hay que parsear las 48
+  listas de 26 (Wikipedia "2026 FIFA World Cup squads") y clasificar el club de cada
+  jugador. Muy redundante con el valor de plantel (corr. alta) → bajo retorno.
+- (Opcional) Para que el valor de plantel pese más en el resultado final, se podría
+  **blendear en `rating_base`** (núcleo Elo/DC) en vez de sólo como feature ML, o subir
+  el peso del ML en `ensemble_1x2`. Es una decisión de modelado a discutir.
 - (Opcional) Mapear partido→estadio para activar el feature de **altitud** y una
   localía más fina en eliminatorias (hoy neutral).
 - (Opcional) Calibración out-of-sample / backtesting cuando haya más partidos.

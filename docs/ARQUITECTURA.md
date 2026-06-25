@@ -37,8 +37,11 @@ Rating de fuerza y matriz de modelado.
   (mediana de confederación − 40, o percentil 10 global). Marca `rating_imputado`.
 - `construir_dataset_partidos(equipos, fixture) -> DataFrame` — una fila por
   partido con features **Δ(A−B)** (`d_rating`, `d_ranking`, `d_puntos`, `d_titulos`,
-  `d_apariciones`, `d_mejor_result`), `anfitrion`, `altitud`, y target `resultado`
-  (1/X/2, sólo si jugado).
+  `d_apariciones`, `d_mejor_result`, `d_valor_plantel`), `anfitrion`, `altitud`, y
+  target `resultado` (1/X/2, sólo si jugado). `d_valor_plantel` sale del valor de
+  plantel de `Predictores_país` (reescalado a decenas de € MM); sólo aporta si esa
+  columna está cargada. Para sumar una columna nueva: agregarla a `_FEATURES_DIF`
+  **y** a `COLUMNAS_FEATURES`.
 - `matriz_modelo(dataset, solo_jugados=True) -> (X, y)` — listo para sklearn
   (NaN → 0). `COLUMNAS_FEATURES` lista las columnas canónicas.
 - `tabla_rating(equipos) -> dict` — país → `rating_base`.
