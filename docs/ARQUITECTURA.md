@@ -37,11 +37,11 @@ Rating de fuerza y matriz de modelado.
   (mediana de confederación − 40, o percentil 10 global). Marca `rating_imputado`.
 - `construir_dataset_partidos(equipos, fixture) -> DataFrame` — una fila por
   partido con features **Δ(A−B)** (`d_rating`, `d_ranking`, `d_puntos`, `d_titulos`,
-  `d_apariciones`, `d_mejor_result`, `d_valor_plantel`), `anfitrion`, `altitud`, y
-  target `resultado` (1/X/2, sólo si jugado). `d_valor_plantel` sale del valor de
-  plantel de `Predictores_país` (reescalado a decenas de € MM); sólo aporta si esa
-  columna está cargada. Para sumar una columna nueva: agregarla a `_FEATURES_DIF`
-  **y** a `COLUMNAS_FEATURES`.
+  `d_apariciones`, `d_mejor_result`, `d_valor_plantel`, `d_edad`), `anfitrion`,
+  `altitud`, y target `resultado` (1/X/2, sólo si jugado). `d_valor_plantel` y
+  `d_edad` salen de `Predictores_país` (valor de plantel reescalado a decenas de
+  € MM; edad promedio); sólo aportan si esas columnas están cargadas. Para sumar
+  una columna nueva: agregarla a `_FEATURES_DIF` **y** a `COLUMNAS_FEATURES`.
 - `matriz_modelo(dataset, solo_jugados=True) -> (X, y)` — listo para sklearn
   (NaN → 0). `COLUMNAS_FEATURES` lista las columnas canónicas.
 - `tabla_rating(equipos) -> dict` — país → `rating_base`.
@@ -60,9 +60,13 @@ Modelos econométricos y de ML + ensemble.
   avisa si la muestra es chica). `predecir_ml(modelos, fila_features)`.
 - **Ensemble** — `ensemble_1x2(p_elo, p_dc, probs_ml, pesos)` (promedio ponderado;
   DC pesa más que ML).
-- **Salida por partido** — `pronostico_partidos(dataset, equipos, dc, modelos_ml)`
-  → tabla con `P(1/X/2)`, goles esperados y marcador más probable de cada partido
-  pendiente.
+- **Evaluación + selección** — `evaluar_modelos(dataset, equipos)` compara Elo,
+  Dixon-Coles, logit, RF, GBM y el ensemble por **validación cruzada out-of-fold**
+  (reentrena DC y ML por fold, sin fuga) y devuelve `(tabla, mejor)` con log_loss /
+  accuracy / brier. El notebook usa `mejor` para el pronóstico 1/X/2.
+- **Salida por partido** — `pronostico_partidos(dataset, equipos, dc, modelos_ml,
+  modelo="ensemble")` → tabla con `P(1/X/2)` (del modelo elegido), goles esperados
+  y marcador más probable de cada partido pendiente.
 
 ## `simulate.py`
 Actualización de Elo y simulación Monte Carlo del torneo.
@@ -79,8 +83,12 @@ Actualización de Elo y simulación Monte Carlo del torneo.
   `_asignar_terceros` (**matching bipartito** de los 8 mejores terceros a los slots
   `3º X/Y/Z` respetando elegibilidad; `scipy.linear_sum_assignment`),
   `_parse_slot` (interpreta `1º C` / `3º A/B/C/D/F`), `_una_corrida`, `_subir_ronda`.
-- **Eliminatorias = localía moderada** para anfitriones (`FACTOR_LOCALIA_KO`, fracción
-  de la ventaja de grupos; 0.0 = neutral); empates resueltos por fuerza.
+- **Eliminatorias = localía moderada** para anfitriones (`FACTOR_LOCALIA_KO=0.3`,
+  fracción de la ventaja de grupos; 0.0 = neutral); empates resueltos por fuerza.
+- `bracket_mas_probable(equipos, fixture, bracket, dixon_coles)` — devuelve el cuadro
+  de 32avos del **escenario más probable** (determinista: completa los pendientes con
+  el marcador esperado y resuelve grupos + terceros), con **nombres de selección**
+  (sin duplicados). Es el que llena `Equipo 1`/`Equipo 2` de la hoja Eliminatorias.
 
 ## `viz.py`
 Gráficos guardados en `outputs/`.

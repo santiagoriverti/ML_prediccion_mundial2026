@@ -31,16 +31,21 @@ se cargan nuevos resultados en el Excel y se reejecuta el notebook.
   grupos + parte de la fecha 3). El resto se simula.
 - **Puntos/Ranking FIFA completos para las 48 (0 imputados; antes 11).** Se cargaron
   los reales del ranking 19-nov-2025 (ver §5 y §8 para el método).
-- **Valor de plantel** (Transfermarkt jun-2026) cargado para las 48 y conectado como
-  feature `d_valor_plantel`.
-- **Localía moderada en eliminatorias** activada (`FACTOR_LOCALIA_KO=0.5`): los
-  anfitriones suben (ver §5).
+- **Valor de plantel** (Transfermarkt jun-2026) y **edad promedio del plantel**
+  (RotoWire) cargados para las 48 y conectados como features `d_valor_plantel`,
+  `d_edad`.
+- **Localía moderada en eliminatorias** (`FACTOR_LOCALIA_KO=0.3`): los anfitriones
+  suben moderado sin desbordar (ver §5).
+- **Evaluación y selección de modelos**: `evaluar_modelos` compara Elo, Dixon-Coles,
+  logit, RF, GBM y ensemble por validación cruzada out-of-fold; el notebook usa el
+  mejor para el pronóstico 1/X/2. Hoy gana el **ensemble** (log-loss 0,911,
+  accuracy 0,667). La simulación usa Dixon-Coles como generador de marcadores.
+- **Eliminatorias**: `Equipo 1`/`Equipo 2` muestran el escenario más probable con
+  nombres de selección; los slots de posición se preservan en `Slot 1`/`Slot 2`.
 - Pipeline probado de punta a punta. **20.000 corridas Monte Carlo en ~9 s.**
-- Pronóstico actual (top campeón, con esos 54 resultados y localía KO 0.5):
-  EE.UU. ~8,7 % · México ~8,3 % · Argentina ~8,0 % · Alemania ~7,1 % ·
-  Francia ~7,0 % · Brasil ~5,8 % · España ~5,8 % · Portugal ~5,4 % …
-  (44 selecciones con prob > 0, suma = 1,0). Con `FACTOR_LOCALIA_KO=0.3`
-  Argentina vuelve a ser 1ª (~8,5 %).
+- Pronóstico actual (top campeón, 54 resultados, localía KO 0.3):
+  Argentina ~8,3 % · Alemania ~7,6 % · EE.UU. ~7,3 % · Francia ~7,0 % ·
+  México ~6,9 % … (44 selecciones con prob > 0, suma = 1,0).
 
 ## 3. Cómo retomar mañana (pasos)
 
@@ -78,7 +83,8 @@ Excel  ─► data_loader.cargar_datos()        → equipos, fixture, bracket
 | **Puntos FIFA de 11 selecciones (rank exacto + puntos reconstruidos)** | Faltaban los Puntos FIFA de 11 equipos (rank 50–86). Se cargó el **rank exacto** del 19-nov-2025 (fuente: ranking del sorteo del Mundial, validado contra los 5 ya presentes) y los **puntos se reconstruyeron del rank** con la recta rank→puntos del propio Excel (pendiente −3,34 pts/rank, RMSE cola 2,0; validado vs Arabia Saudita real ±4). **No son los decimales literales publicados**, son estimaciones ±~5 pts. | Los puntos exactos sub-60 de esa edición no están accesibles sin JS; la estimación es muy superior a la imputación cruda y mantiene la misma edición. |
 | **Regularización fuerte Dixon-Coles** | `lambda_prior=8.0` (prior L2 hacia ataque/defensa derivados del rating). | Con ~1 partido por equipo, sin esto un 7-1 (Alemania) o un 0-0 (España vs Cabo Verde) distorsionaba todo. |
 | **Cotas en la MLE** | gamma∈[0, 0.28], rho∈[−0.15, 0.15], intercept∈[log 0.4, log 2.2]. | Evita que la verosimilitud se desboque con muestra chica. |
-| **Localía: plena en grupos, MODERADA en eliminatorias** | Anfitriones (MEX/USA/CAN) reciben ventaja **plena** en grupos y una **fracción** (`FACTOR_LOCALIA_KO=0.5`) en cada partido de eliminatoria, por jugar en Norteamérica. | Localía plena en las 7 rondas inflaba a los anfitriones (~53 % combinado); neutral total ignoraba un efecto real. Con 0.5 suman ~21 % (USA/MEX ~8 %); con 0.3 ~18 % y Argentina sigue 1ª. Tuneable. El cuadro post-32avos es aproximado, así que es un efecto agregado, no estadio por estadio. |
+| **Localía: plena en grupos, MODERADA en eliminatorias** | Anfitriones (MEX/USA/CAN) reciben ventaja **plena** en grupos y una **fracción** (`FACTOR_LOCALIA_KO=0.3`) en cada partido de eliminatoria, por jugar en Norteamérica. | Localía plena en las 7 rondas inflaba a los anfitriones (~53 % combinado); neutral total ignoraba un efecto real. Con **0.3** suman ~18 % y Argentina sigue 1ª (elegido); con 0.5 ~21 % y USA pasa a favorito. Tuneable. El cuadro post-32avos es aproximado, así que es un efecto agregado, no estadio por estadio. |
+| **Evaluar y elegir el mejor modelo** | `evaluar_modelos` compara Elo/Dixon-Coles/logit/RF/GBM/ensemble por CV out-of-fold (reentrena DC y ML por fold); el notebook usa el mejor (hoy ensemble) para el 1/X/2. La simulación usa Dixon-Coles (único que genera marcadores). | Antes el ensemble tenía pesos fijos sin evaluar; ahora la elección es data-driven y auditable. |
 | **Desempate de grupos = FIFA oficial** | Puntos → DG global → GF global → **head-to-head** entre empatados (pts, DG, GF) → fair-play/sorteo (azar). | El enunciado decía "head-to-head primero", pero la regla **oficial FIFA** aplica primero los criterios globales y recién después el H2H. Se implementó la oficial real. |
 | **8 mejores terceros** | Ranking por (pts, DG, GF) y asignación a los slots `3º X/Y/Z` del bracket por **matching bipartito** respetando la elegibilidad de cada slot. | Reproduce la regla FIFA usando los cruces que ya trae la hoja `Eliminatorias`. |
 | **Cuadro post-32avos** | Sólo los 32avos están definidos en el Excel; las rondas siguientes se arman como **árbol binario** en el orden listado. | La hoja deja en blanco 16avos→Final. Es adaptable si se completan esos slots. |
@@ -96,8 +102,13 @@ Excel  ─► data_loader.cargar_datos()        → equipos, fixture, bracket
   - `actualizar_elo(..., K=32.0)` — velocidad de actualización del Elo.
   - `simular_torneo(..., n_sims=20000, semilla=2026)` — corridas (subir a 50000
     para más precisión, ~20-30 s).
-  - `FACTOR_LOCALIA_KO = 0.5` — fracción de localía a los anfitriones en
+  - `FACTOR_LOCALIA_KO = 0.3` — fracción de localía a los anfitriones en
     eliminatorias (0.0 = neutral, 1.0 = ventaja plena de grupos). Ver sección 5.
+  - `bracket_mas_probable(...)` — cuadro de 32avos del escenario más probable
+    (nombres de selección) que llena `Equipo 1`/`Equipo 2` de Eliminatorias.
+- `src/models.py`
+  - `evaluar_modelos(dataset, equipos)` — comparación CV out-of-fold + mejor modelo.
+  - `pronostico_partidos(..., modelo="ensemble")` — `modelo` elige el predictor 1/X/2.
 
 ## 7. Probar el pipeline en local (sin Colab)
 
@@ -155,14 +166,25 @@ print(res["campeon"].head(12))
 - (Hecho jun-2026) Cargado **valor de plantel** en `Predictores_país` y conectado al
   modelo como feature `d_valor_plantel` (mejoró el log-loss CV de los 3 modelos ML;
   el titular casi no se mueve porque el ensemble pondera más a Dixon-Coles + Elo).
-- (Opcional) Agregar **jugadores en top-5 ligas** como feature: hay que parsear las 48
-  listas de 26 (Wikipedia "2026 FIFA World Cup squads") y clasificar el club de cada
-  jugador. Muy redundante con el valor de plantel (corr. alta) → bajo retorno.
-- (Opcional) Para que el valor de plantel pese más en el resultado final, se podría
-  **blendear en `rating_base`** (núcleo Elo/DC) en vez de sólo como feature ML, o subir
-  el peso del ML en `ensemble_1x2`. Es una decisión de modelado a discutir.
-- (Opcional) Mapear partido→estadio para activar el feature de **altitud** y una
-  localía más fina en eliminatorias (hoy neutral).
+- (Hecho jun-2026) Cargada **edad promedio del plantel** (RotoWire) y conectada como
+  feature `d_edad`. Señal débil (la edad no separa mucho 1/X/2), pero entra al modelo.
+- (Hecho jun-2026) **Eliminatorias** con nombres de selección proyectados (escenario
+  más probable) en `Equipo 1`/`Equipo 2`; slots de posición preservados en `Slot 1`/2.
+- (Hecho jun-2026) **Evaluación + selección de modelos** (`evaluar_modelos`, CV
+  out-of-fold) y notebook reescrito sin emojis usando el mejor modelo.
+- **NO incluidos a propósito (decisión profesional):**
+  - **Jugadores en top-5 ligas**: sin fuente agregada limpia (habría que clasificar
+    ~1.250 jugadores), post-corte (planteles definitivos jun-2026) y **redundante**
+    con el valor de plantel (correlación alta). La columna queda lista si se llena.
+  - **Clasificatorias (récord de eliminatorias)**: PJ/PG/PE/PP/GF/GC **no son
+    comparables entre confederaciones** (formatos, # de partidos y rivales muy
+    distintos: OFC vs CONMEBOL) y son redundantes con el ranking FIFA. Incluirlas en
+    crudo metería sesgo/ruido, no señal. El loader las leería si se cargan, pero no se
+    conectaron como feature por esto.
+- (Opcional) Para que el valor de plantel/edad pesen más, **blendearlos en
+  `rating_base`** (núcleo Elo/DC) o subir el peso del ML en `ensemble_1x2`.
+- (Opcional) Mapear partido→estadio para activar el feature de **altitud** (hoy 0) y
+  una localía por estadio en eliminatorias (hoy por nación anfitriona). Ver hoja `Sedes`.
 - (Opcional) Calibración out-of-sample / backtesting cuando haya más partidos.
 
 ## 10. Seguridad (IMPORTANTE)

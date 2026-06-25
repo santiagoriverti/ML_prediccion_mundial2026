@@ -86,6 +86,9 @@ _FEATURES_DIF = [
     # Valor de plantel (Transfermarkt) -> proxy de calidad complementario al ranking.
     # Sólo aporta si la hoja Predictores_país tiene la columna cargada; si no, queda NaN.
     ("pred_valor_plantel_(€_mm)", "d_valor_plantel"),
+    # Edad promedio del plantel (Predictores_país). Señal débil/ambigua; el modelo
+    # aprende el signo. Sólo aporta si la columna está cargada.
+    ("pred_edad_prom._plantel", "d_edad"),
 ]
 
 
@@ -157,7 +160,8 @@ def construir_dataset_partidos(equipos: pd.DataFrame,
 # Lista canónica de columnas de features para los modelos supervisados.
 COLUMNAS_FEATURES = [
     "d_rating", "d_ranking", "d_puntos", "d_titulos",
-    "d_apariciones", "d_mejor_result", "d_valor_plantel", "anfitrion", "altitud",
+    "d_apariciones", "d_mejor_result", "d_valor_plantel", "d_edad",
+    "anfitrion", "altitud",
 ]
 
 

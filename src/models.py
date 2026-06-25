@@ -318,10 +318,86 @@ def ensemble_1x2(prob_elo, prob_dc, probs_ml: dict | None = None,
 
 
 # ===========================================================================
+# 4b) EVALUACIÓN DE MODELOS (validación cruzada out-of-fold) + selección
+# ===========================================================================
+def _suavizar(P, eps=1e-6):
+    """Clip + renormaliza filas de probabilidad (log-loss estable)."""
+    P = np.clip(P, eps, 1.0)
+    return P / P.sum(axis=1, keepdims=True)
+
+
+def evaluar_modelos(dataset, equipos, n_splits=5, random_state=42,
+                    pesos_ensemble=None):
+    """Compara los modelos 1/X/2 por validación cruzada OUT-OF-FOLD.
+
+    Sobre los partidos YA jugados, en cada fold se reentrenan Dixon-Coles y los
+    modelos ML SÓLO con el train y se predice el test (sin fuga de información).
+    Elo es paramétrico (función del rating) y se evalúa directo. El ensemble se
+    arma con las predicciones out-of-fold de cada modelo.
+
+    Devuelve ``(tabla, mejor)``: ``tabla`` ordenada por ``log_loss`` (menor =
+    mejor) con columnas log_loss / accuracy / brier, y ``mejor`` = nombre del
+    modelo ganador. Pensado para que el notebook elija con qué modelo predecir.
+    """
+    from sklearn.model_selection import StratifiedKFold
+    from sklearn.metrics import log_loss, accuracy_score
+
+    df = dataset[dataset["jugado"]].reset_index(drop=True)
+    y = df["resultado"].astype(str).values
+    clases = ["1", "X", "2"]
+    n = len(df)
+    if n < 10 or len(set(y)) < 2:
+        return pd.DataFrame(), "ensemble"
+
+    rating = dict(zip(equipos["pais"], equipos["rating_base"].astype(float)))
+    cand = ["elo", "dc", "logit", "rf", "gbm", "ensemble"]
+    oof = {m: np.full((n, 3), np.nan) for m in cand}
+
+    min_clase = int(pd.Series(y).value_counts().min())
+    k = int(min(n_splits, max(2, min_clase)))
+    skf = StratifiedKFold(n_splits=k, shuffle=True, random_state=random_state)
+    for tr_idx, te_idx in skf.split(np.zeros(n), y):
+        dc_f = DixonColes(equipos).entrenar(df.iloc[tr_idx])
+        ml_f, _ = entrenar_modelos_ml(df.iloc[tr_idx], random_state=random_state)
+        for i in te_idx:
+            row = df.iloc[i]
+            a, b, anf = row["equipo_a"], row["equipo_b"], float(row["anfitrion"])
+            p_elo = elo_prob_1x2(rating.get(a, 1500.0), rating.get(b, 1500.0), anf)
+            p_dc = dc_f.prob_1x2(a, b, anf)
+            oof["elo"][i] = p_elo
+            oof["dc"][i] = p_dc
+            p_ml = predecir_ml(ml_f, df.iloc[[i]]) if ml_f else {}
+            for nombre in ("logit", "rf", "gbm"):
+                if nombre in p_ml:
+                    oof[nombre][i] = p_ml[nombre]
+            oof["ensemble"][i] = ensemble_1x2(p_elo, p_dc, p_ml or None,
+                                              pesos_ensemble)
+
+    onehot = np.array([[1.0 if c == yi else 0.0 for c in clases] for yi in y])
+    filas = []
+    for m in cand:
+        P = oof[m]
+        if np.isnan(P).any():
+            continue
+        Ps = _suavizar(P)
+        filas.append({
+            "modelo": m,
+            "log_loss": round(float(log_loss(y, Ps, labels=clases)), 4),
+            "accuracy": round(float(accuracy_score(
+                y, [clases[j] for j in Ps.argmax(1)])), 4),
+            "brier": round(float(np.mean(np.sum((Ps - onehot) ** 2, axis=1))), 4),
+        })
+    tabla = pd.DataFrame(filas).sort_values("log_loss").reset_index(drop=True)
+    mejor = tabla.iloc[0]["modelo"] if len(tabla) else "ensemble"
+    return tabla, mejor
+
+
+# ===========================================================================
 # 5) Pronóstico por partido (tabla de salida)
 # ===========================================================================
 def pronostico_partidos(dataset, equipos, dixon_coles, modelos_ml=None,
-                        solo_pendientes=True):
+                        solo_pendientes=True, modelo="ensemble",
+                        pesos_ensemble=None):
     """Construye la tabla de pronóstico por partido del fixture.
 
     Para cada partido devuelve: P(1/X/2) del ensemble, goles esperados de cada
@@ -350,7 +426,15 @@ def pronostico_partidos(dataset, equipos, dixon_coles, modelos_ml=None,
         if modelos_ml:
             fila_feat = pd.DataFrame([{c: m.get(c, 0.0) for c in COLUMNAS_FEATURES}])
             p_ml = predecir_ml(modelos_ml, fila_feat)
-        p1, pX, p2 = ensemble_1x2(p_elo, p_dc, p_ml)
+        # Selección del predictor 1/X/2 según ``modelo`` (lo elige evaluar_modelos).
+        if modelo == "elo":
+            p1, pX, p2 = p_elo
+        elif modelo == "dc":
+            p1, pX, p2 = p_dc
+        elif modelo in ("logit", "rf", "gbm") and p_ml and modelo in p_ml:
+            p1, pX, p2 = p_ml[modelo]
+        else:
+            p1, pX, p2 = ensemble_1x2(p_elo, p_dc, p_ml, pesos_ensemble)
         filas.append({
             "grupo": m.get("grupo"), "jornada": m.get("jornada"),
             "equipo_a": a, "equipo_b": b,

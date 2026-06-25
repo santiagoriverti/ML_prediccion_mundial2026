@@ -19,26 +19,34 @@ fixture y cuadro final):
 
 1. **Lee y limpia** los datos (encabezados en la fila 2, claves por *País*,
    tolerancia a NaN y hojas plantilla vacías).
-2. **Deriva un rating de fuerza** a partir de los Puntos FIFA (con imputación de
-   las selecciones sin ranking) y lo **actualiza con los resultados ya cargados**.
+2. **Construye las variables (features)** por partido como diferencia A−B:
+   rating Elo, ranking y Puntos FIFA, títulos, apariciones, mejor resultado
+   histórico, **valor de plantel** (Transfermarkt), **edad promedio** y localía.
 3. **Entrena los modelos**:
    - *Elo probabilístico* (baseline, con ventaja de localía para anfitriones).
    - *Dixon-Coles / Poisson* por máxima verosimilitud, **regularizado con un
      prior basado en el Elo** (necesario por la muestra chica).
    - *Logit multinomial, RandomForest y GradientBoosting* para 1/X/2, con
-     validación cruzada y calibración (complementarios).
+     validación cruzada y calibración.
    - *Ensemble* que promedia las probabilidades.
-4. **Simula el torneo** (Monte Carlo, 20.000–50.000 corridas): completa los
-   partidos no jugados, resuelve los grupos con el **desempate oficial FIFA**,
-   asigna los **8 mejores terceros**, arma el bracket y juega hasta la final
-   (prórroga/penales resueltos por fuerza). Los partidos jugados quedan **fijos**.
+4. **Evalúa y elige el mejor modelo**: compara todos por **validación cruzada
+   out-of-fold** (log-loss, accuracy, Brier) reentrenando en cada fold sin fuga,
+   y usa el ganador para el pronóstico 1/X/2.
+5. **Simula el torneo** (Monte Carlo, 20.000 corridas, con Dixon-Coles como
+   generador de marcadores): completa los partidos no jugados, resuelve los grupos
+   con el **desempate oficial FIFA**, asigna los **8 mejores terceros**, arma el
+   bracket y juega hasta la final, con **localía moderada para los anfitriones**.
+   Los partidos jugados quedan **fijos**.
 
 ## Salidas
 
-- Tabla por partido pendiente: `P(1/X/2)`, goles esperados y marcador más probable.
+- Tabla por partido pendiente: `P(1/X/2)` (del mejor modelo), goles esperados y
+  marcador más probable.
+- **Comparación de modelos** (log-loss / accuracy / Brier) y el modelo elegido.
 - **Ranking de probabilidad de ser campeón** por selección.
 - Probabilidad de **alcanzar cada ronda** (32avos → final) y de **ganar/clasificar**
   por grupo.
+- **Cuadro de eliminatorias del escenario más probable** (con nombres de selección).
 - Gráficos (barras de campeón, heatmap de avance) y CSVs en `outputs/`.
 
 ## Cómo ejecutarlo

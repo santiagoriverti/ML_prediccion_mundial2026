@@ -259,13 +259,20 @@ def construir_bracket(xls: pd.ExcelFile) -> pd.DataFrame:
     if eli is None:
         warnings.warn("No se encontró la hoja 'Eliminatorias'; bracket vacío.")
         return pd.DataFrame()
+    # Los SLOTS posicionales ('1º C', '3º A/B/...') son la fuente de verdad para la
+    # simulación. Si existen las columnas 'Slot 1'/'Slot 2', se leen de ahí (porque
+    # 'Equipo 1'/'Equipo 2' pueden contener nombres de selección proyectados);
+    # si no, se usan las posiciones 2 y 5 ('Equipo 1'/'Equipo 2') como antes.
+    cols = {str(c).strip().lower(): i for i, c in enumerate(eli.columns)}
+    i_s1 = cols.get("slot 1", 2)
+    i_s2 = cols.get("slot 2", 5)
     b = pd.DataFrame()
     b["ronda"] = _col(eli, 0).map(_norm_texto)
     b["partido"] = pd.to_numeric(_col(eli, 1), errors="coerce")
-    b["slot_1"] = _col(eli, 2).map(_norm_texto)
+    b["slot_1"] = _col(eli, i_s1).map(_norm_texto)
     b["goles_1"] = pd.to_numeric(_col(eli, 3), errors="coerce")
     b["goles_2"] = pd.to_numeric(_col(eli, 4), errors="coerce")
-    b["slot_2"] = _col(eli, 5).map(_norm_texto)
+    b["slot_2"] = _col(eli, i_s2).map(_norm_texto)
     b["notas"] = _col(eli, 6).map(_norm_texto)
     # Conservar solo filas que representan un cruce real (tienen ambos slots)
     b = b[b["slot_1"].notna() & b["slot_2"].notna()].reset_index(drop=True)

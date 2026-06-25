@@ -70,16 +70,21 @@ Columnas: `N°` · `País` · `Cód.` · `Grupo` (A–L) · `Pos. grupo` (1–4)
 - Se derivan `dt_extranjero` (1 si la nacionalidad del DT ≠ país) y
   `dt_antiguedad` (2026 − año en el cargo). Features opcionales.
 
-### `Clasificatorias` (vacía) y `Predictores_país` (valor de plantel cargado)
-`Clasificatorias` sigue vacía → se ignora. `Predictores_país` tiene cargado el
-**valor de plantel (€ MM, Transfermarkt jun-2026)** de las 48 selecciones.
+### `Clasificatorias` (vacía) y `Predictores_país` (valor de plantel + edad)
+`Predictores_país` tiene cargados el **valor de plantel (€ MM, Transfermarkt
+jun-2026)** y la **edad promedio del plantel** (RotoWire) de las 48 selecciones →
+features `d_valor_plantel` y `d_edad`. Las columnas `Población`, `PIB` y
+`Jug. en top-5 ligas` siguen vacías.
 
-⚠️ **Cargar una columna NO la convierte sola en feature del modelo.** El loader la
-sube a la tabla de equipos (prefijo `pred_`), pero el modelo sólo usa las columnas
-listadas en `COLUMNAS_FEATURES` (`features.py`). Para que una columna nueva pese en
-la predicción hay que **agregarla a `_FEATURES_DIF` y a `COLUMNAS_FEATURES`** (así se
-hizo con `d_valor_plantel`). El resto de columnas de estas hojas se cargan pero no
-entran al modelo.
+`Clasificatorias` sigue **vacía a propósito**: el récord de eliminatorias no es
+comparable entre confederaciones (formatos y rivales muy distintos) y es redundante
+con el ranking FIFA; cargarlo en crudo metería sesgo, no señal.
+
+> **Cargar una columna NO la convierte sola en feature del modelo.** El loader la
+> sube a la tabla de equipos (prefijo `pred_` / `cl_`), pero el modelo sólo usa las
+> columnas listadas en `COLUMNAS_FEATURES` (`features.py`). Para que una columna
+> nueva pese hay que **agregarla a `_FEATURES_DIF` y a `COLUMNAS_FEATURES`** (así se
+> hizo con `d_valor_plantel` y `d_edad`).
 
 ### `Fixture_Grupos` (72 = 12 grupos × 6 partidos) — ACÁ CARGÁS RESULTADOS DE GRUPOS
 `ID` · `Grupo` · `Jornada` (1/2/3) · `Equipo A` · `Equipo B` ·
@@ -95,9 +100,14 @@ sola en Excel, pero **el código NO se fía de `Orden prov.`**: recalcula las
 posiciones con el **desempate oficial FIFA** dentro de la simulación.
 
 ### `Eliminatorias` (34) — ACÁ CARGÁS RESULTADOS DE LA FASE FINAL
-`Ronda` · `Partido` · `Equipo 1` · **`Goles 1`** · **`Goles 2`** · `Equipo 2` · `Notas`.
-- Sólo los **32avos** traen los cruces por posición (`2º A` vs `2º B`,
-  `1º E` vs `3º A/B/C/D/F`, …). Esas etiquetas codifican el bracket reglamentario.
+`Ronda` · `Partido` · `Equipo 1` · **`Goles 1`** · **`Goles 2`** · `Equipo 2` ·
+`Notas` · `Sede` · **`Slot 1`** · **`Slot 2`**.
+- **`Equipo 1` / `Equipo 2`** ahora muestran el **nombre de selección proyectado**
+  (escenario más probable, de `bracket_mas_probable`). Es una proyección que cambia
+  al recargar resultados; los partidos de grupo en curso aún no fijan los cruces.
+- **`Slot 1` / `Slot 2`** guardan las **etiquetas de posición** (`2º A`, `1º E`,
+  `3º A/B/C/D/F`, …) que codifican el bracket reglamentario: **son la fuente de
+  verdad que usa la simulación** (`construir_bracket` las lee de ahí). No las borres.
 - Las rondas siguientes (16avos→Final) están **en blanco** (se arman como árbol
   binario en código).
 - Cuando empiece la fase final, cargá `Goles 1` / `Goles 2` igual que en grupos.

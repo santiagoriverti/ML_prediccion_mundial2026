@@ -49,7 +49,7 @@ RONDAS = ["Fase de grupos", "32avos", "16avos", "Cuartos",
 # inflaba absurdamente sus probabilidades). Se aplica una fracción de la ventaja.
 # El cuadro post-32avos es aproximado, así que esto modela el efecto "anfitrión en
 # casa" de forma agregada, no estadio por estadio. 0.0 = neutral; 1.0 = ventaja plena.
-FACTOR_LOCALIA_KO = 0.5
+FACTOR_LOCALIA_KO = 0.3
 
 
 # ===========================================================================
@@ -461,3 +461,59 @@ def simular_torneo(equipos, fixture, bracket, dixon_coles,
 
     return {"campeon": df_camp, "avance": df_avance, "grupos": df_grupos,
             "n_sims": n_sims}
+
+
+def bracket_mas_probable(equipos, fixture, bracket, dixon_coles):
+    """Devuelve el cuadro de 32avos del **escenario más probable** (determinista).
+
+    Completa los partidos de grupo pendientes con su marcador esperado (goles
+    esperados Dixon-Coles redondeados), resuelve los grupos con el desempate
+    oficial FIFA y asigna los 8 mejores terceros. Es un ESCENARIO ÚNICO y
+    consistente (cada selección aparece una sola vez), pensado para mostrar el
+    bracket con nombres de selección. Cambia al recargar resultados.
+
+    Devuelve un DataFrame con columnas: partido, equipo_1, equipo_2.
+    """
+    rng = np.random.default_rng(0)
+    gen = GeneradorGoles(dixon_coles, rng)
+    ctx = _precomputar(equipos, fixture, bracket, gen)
+
+    res_grupo = {}
+    for (grupo, a, b, jugado, gaf, gbf, ip) in ctx["partidos"]:
+        if jugado:
+            ga, gb = gaf, gbf
+        else:
+            ga = int(round(ctx["lam_pend"][ip]))
+            gb = int(round(ctx["mu_pend"][ip]))
+        res_grupo.setdefault(grupo, []).append((a, b, ga, gb))
+
+    pos_grupo, terceros = {}, []
+    for grupo, r in res_grupo.items():
+        orden = _orden_grupo(ctx["grupos"][grupo], r)
+        for k, pais in enumerate(orden, start=1):
+            pos_grupo[(grupo, k)] = pais
+        if len(orden) >= 3:
+            t = orden[2]
+            pts = gf = gc = 0
+            for a, b, ga, gb in r:
+                if a == t:
+                    gf += ga; gc += gb
+                    pts += 3 if ga > gb else (1 if ga == gb else 0)
+                elif b == t:
+                    gf += gb; gc += ga
+                    pts += 3 if gb > ga else (1 if ga == gb else 0)
+            terceros.append((grupo, t, pts, gf - gc, gf))
+
+    terceros_ord = sorted(terceros, key=lambda x: (x[2], x[3], x[4]), reverse=True)
+    mejores = [(g, p) for (g, p, *_) in terceros_ord[:8]]
+    asign = (_asignar_terceros(ctx["slots_terceros"], mejores)
+             if ctx["slots_terceros"] else {})
+
+    def resolver(slot, idp):
+        tipo, pos, info = slot
+        return pos_grupo.get((info, pos)) if tipo == "pos" else asign.get(idp)
+
+    filas = [{"partido": idp, "equipo_1": resolver(s1, idp),
+              "equipo_2": resolver(s2, idp)}
+             for (idp, s1, s2) in ctx["cruces_def"]]
+    return pd.DataFrame(filas).sort_values("partido").reset_index(drop=True)
