@@ -1,0 +1,26 @@
+# --- Salidas generadas (no versionar imágenes/temporales) ---
+outputs/*.png
+outputs/*.csv
+outputs/*.html
+!outputs/.gitkeep
+
+# --- Secretos / credenciales (NUNCA versionar tokens) ---
+*.token
+*.pat
+.env
+.env.*
+secrets*.json
+github_token*.txt
+
+# --- Python ---
+__pycache__/
+*.py[cod]
+*.egg-info/
+.ipynb_checkpoints/
+.venv/
+venv/
+
+# --- Sistema ---
+.DS_Store
+Thumbs.db
+~$*.xlsx
