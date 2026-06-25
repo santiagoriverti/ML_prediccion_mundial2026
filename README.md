@@ -77,6 +77,10 @@ ML_prediccion_mundial2026/
 ├── requirements.txt
 ├── notebooks/
 │   └── prediccion_mundial2026.ipynb   # notebook principal (Colab)
+├── docs/                              # 🧠 memoria del proyecto (ver abajo)
+│   ├── MEMORIA.md                     # handoff: cómo retomar, decisiones, parámetros
+│   ├── DICCIONARIO_EXCEL.md           # hojas del Excel + cómo cargar resultados
+│   └── ARQUITECTURA.md                # referencia de módulos y funciones
 ├── src/
 │   ├── data_loader.py                 # lectura/limpieza del Excel
 │   ├── features.py                    # rating base + dataset por partido
@@ -85,6 +89,13 @@ ML_prediccion_mundial2026/
 │   └── viz.py                         # gráficos
 └── outputs/                           # CSVs y figuras generadas
 ```
+
+## 🧠 Documentación / memoria del proyecto
+
+Para retomar el proyecto en otra sesión, leer [`docs/MEMORIA.md`](docs/MEMORIA.md)
+(estado, cómo actualizar el Excel, decisiones de modelado y parámetros),
+[`docs/DICCIONARIO_EXCEL.md`](docs/DICCIONARIO_EXCEL.md) (hojas del Excel y carga de
+resultados) y [`docs/ARQUITECTURA.md`](docs/ARQUITECTURA.md) (referencia del código).
 
 ## Notas metodológicas
 
