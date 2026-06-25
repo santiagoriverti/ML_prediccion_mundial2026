@@ -70,10 +70,13 @@ se cargan nuevos resultados en el Excel y se reejecuta el notebook.
   el pronóstico. Gráfico: `outputs/calibracion.png`.
 - **Eliminatorias**: `Equipo 1`/`Equipo 2` muestran el escenario más probable con
   nombres de selección; los slots de posición se preservan en `Slot 1`/`Slot 2`.
-- Pipeline probado de punta a punta. **20.000 corridas Monte Carlo en ~9 s.**
-- Pronóstico actual (top campeón, 54 resultados, localía KO 0.3):
-  Argentina ~8,3 % · Alemania ~7,6 % · EE.UU. ~7,3 % · Francia ~7,0 % ·
-  México ~6,9 % … (44 selecciones con prob > 0, suma = 1,0).
+- Pipeline probado de punta a punta. Notebook ejecutado headless **sin errores**
+  con el Excel enriquecido (raw URL). End-to-end ~3-3,5 min (auto-tuning + OOF +
+  20.000 corridas Monte Carlo).
+- Pronóstico actual (top campeón, 54 resultados, blend top-3 = elo/rf/xgb, localía
+  KO 0.3): **Argentina ~7,0 % · EE.UU. ~6,7 % · Francia ~6,6 % · México ~6,6 % ·
+  España ~5,6 % · Alemania ~5,5 % · Brasil ~5,0 %** … (suma = 1,0). Cambia al
+  recargar resultados o al re-tunear. ECE del blend ≈ 0,059 (bien calibrado).
 
 ## 3. Cómo retomar mañana (pasos)
 
