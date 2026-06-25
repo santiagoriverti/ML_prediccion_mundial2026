@@ -40,6 +40,12 @@ se cargan nuevos resultados en el Excel y se reejecuta el notebook.
   logit, RF, GBM y ensemble por validación cruzada out-of-fold; el notebook usa el
   mejor para el pronóstico 1/X/2. Hoy gana el **ensemble** (log-loss 0,911,
   accuracy 0,667). La simulación usa Dixon-Coles como generador de marcadores.
+- **Calibración (backtesting)**: `tabla_calibracion` mide si las probabilidades son
+  confiables (reliability one-vs-rest + ECE) reusando las predicciones out-of-fold.
+  Hallazgo jun-2026: el **ensemble está subconfiado** (ECE 0,093: comprime las probs
+  hacia 1/3 y predice ~0,5 donde se observa ~0,7); **Elo (0,057) y Dixon-Coles (0,059)
+  están mejor calibrados**, aunque el ensemble gana en log-loss. Diagnóstico, no cambia
+  el pronóstico. Gráfico: `outputs/calibracion.png`.
 - **Eliminatorias**: `Equipo 1`/`Equipo 2` muestran el escenario más probable con
   nombres de selección; los slots de posición se preservan en `Slot 1`/`Slot 2`.
 - Pipeline probado de punta a punta. **20.000 corridas Monte Carlo en ~9 s.**
@@ -107,8 +113,12 @@ Excel  ─► data_loader.cargar_datos()        → equipos, fixture, bracket
   - `bracket_mas_probable(...)` — cuadro de 32avos del escenario más probable
     (nombres de selección) que llena `Equipo 1`/`Equipo 2` de Eliminatorias.
 - `src/models.py`
-  - `evaluar_modelos(dataset, equipos)` — comparación CV out-of-fold + mejor modelo.
+  - `evaluar_modelos(dataset, equipos, devolver_oof=False)` — comparación CV out-of-fold
+    + mejor modelo; con `devolver_oof=True` agrega `(oof, y)` para la calibración.
+  - `tabla_calibracion(P, y, n_bins=10)` — reliability + ECE de una matriz de probs OOF.
   - `pronostico_partidos(..., modelo="ensemble")` — `modelo` elige el predictor 1/X/2.
+- `src/viz.py`
+  - `grafico_calibracion(tabla_calib, ece, modelo)` — reliability diagram a `outputs/`.
 
 ## 7. Probar el pipeline en local (sin Colab)
 
@@ -185,7 +195,12 @@ print(res["campeon"].head(12))
   `rating_base`** (núcleo Elo/DC) o subir el peso del ML en `ensemble_1x2`.
 - (Opcional) Mapear partido→estadio para activar el feature de **altitud** (hoy 0) y
   una localía por estadio en eliminatorias (hoy por nación anfitriona). Ver hoja `Sedes`.
-- (Opcional) Calibración out-of-sample / backtesting cuando haya más partidos.
+- (Hecho jun-2026) **Calibración out-of-sample / backtesting** implementada
+  (`tabla_calibracion` + `grafico_calibracion`, sección 7b del notebook). Reusa las
+  predicciones out-of-fold; mide reliability + ECE por modelo. Reveló que el ensemble
+  está subconfiado (ver §2). Posible mejora futura: **recalibrar** el ensemble (p.ej.
+  temperature scaling / isotónica) o subir su peso al ML, revalidando que no empeore el
+  log-loss. Repetir el chequeo a medida que se carguen más partidos.
 
 ## 10. Seguridad (IMPORTANTE)
 

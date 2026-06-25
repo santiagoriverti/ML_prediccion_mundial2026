@@ -76,6 +76,47 @@ def heatmap_avance(df_avance: pd.DataFrame, top: int = 20,
     return ruta
 
 
+def grafico_calibracion(tabla_calib: pd.DataFrame, ece: float = None,
+                        modelo: str = "", dir_salida=DIR_SALIDA, mostrar=True):
+    """Reliability diagram: frecuencia observada vs probabilidad predicha.
+
+    Recibe la tabla de ``models.tabla_calibracion`` (un punto por tramo). La
+    diagonal es la calibración perfecta; los puntos por encima indican que el
+    modelo subestima y por debajo que sobreestima. El tamaño del punto refleja
+    cuántos casos cayeron en el tramo.
+    """
+    _asegurar_dir(dir_salida)
+    fig, ax = plt.subplots(figsize=(5.5, 5.5))
+    ax.plot([0, 1], [0, 1], "--", color="gray", alpha=0.7,
+            label="Calibracion perfecta")
+    if len(tabla_calib):
+        tam = 30 + 8 * tabla_calib["n"].values
+        ax.scatter(tabla_calib["conf"], tabla_calib["frec_obs"], s=tam,
+                   color="#2c6fbb", alpha=0.8, edgecolor="white", zorder=3,
+                   label="Tramos (tamano = nº casos)")
+        ax.plot(tabla_calib["conf"], tabla_calib["frec_obs"],
+                color="#2c6fbb", alpha=0.5, zorder=2)
+    ax.set_xlim(0, 1); ax.set_ylim(0, 1)
+    ax.set_xlabel("Probabilidad predicha (out-of-fold)")
+    ax.set_ylabel("Frecuencia observada")
+    titulo = "Calibracion del pronostico 1/X/2"
+    if modelo:
+        titulo += f" - {modelo}"
+    if ece is not None and not (isinstance(ece, float) and np.isnan(ece)):
+        titulo += f"  (ECE={ece:.3f})"
+    ax.set_title(titulo)
+    ax.legend(loc="upper left", fontsize=9)
+    ax.grid(alpha=0.3)
+    fig.tight_layout()
+    ruta = os.path.join(dir_salida, "calibracion.png")
+    fig.savefig(ruta, dpi=130)
+    if mostrar:
+        plt.show()
+    else:
+        plt.close(fig)
+    return ruta
+
+
 def grafico_grupo(df_grupos: pd.DataFrame, grupo: str,
                   dir_salida=DIR_SALIDA, mostrar=True):
     """Barras de prob. de clasificar y de ganar el grupo para un grupo dado."""

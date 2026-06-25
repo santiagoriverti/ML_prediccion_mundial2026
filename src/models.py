@@ -327,7 +327,7 @@ def _suavizar(P, eps=1e-6):
 
 
 def evaluar_modelos(dataset, equipos, n_splits=5, random_state=42,
-                    pesos_ensemble=None):
+                    pesos_ensemble=None, devolver_oof=False):
     """Compara los modelos 1/X/2 por validación cruzada OUT-OF-FOLD.
 
     Sobre los partidos YA jugados, en cada fold se reentrenan Dixon-Coles y los
@@ -338,6 +338,11 @@ def evaluar_modelos(dataset, equipos, n_splits=5, random_state=42,
     Devuelve ``(tabla, mejor)``: ``tabla`` ordenada por ``log_loss`` (menor =
     mejor) con columnas log_loss / accuracy / brier, y ``mejor`` = nombre del
     modelo ganador. Pensado para que el notebook elija con qué modelo predecir.
+
+    Si ``devolver_oof=True`` agrega ``(oof, y)``: ``oof`` es un dict
+    modelo -> matriz (n, 3) de probabilidades out-of-fold (orden de clases
+    1/X/2) e ``y`` el vector de resultados reales. Sirve para medir la
+    **calibración** con ``tabla_calibracion`` (backtesting sin fuga).
     """
     from sklearn.model_selection import StratifiedKFold
     from sklearn.metrics import log_loss, accuracy_score
@@ -347,6 +352,8 @@ def evaluar_modelos(dataset, equipos, n_splits=5, random_state=42,
     clases = ["1", "X", "2"]
     n = len(df)
     if n < 10 or len(set(y)) < 2:
+        if devolver_oof:
+            return pd.DataFrame(), "ensemble", {}, np.asarray(y)
         return pd.DataFrame(), "ensemble"
 
     rating = dict(zip(equipos["pais"], equipos["rating_base"].astype(float)))
@@ -389,7 +396,59 @@ def evaluar_modelos(dataset, equipos, n_splits=5, random_state=42,
         })
     tabla = pd.DataFrame(filas).sort_values("log_loss").reset_index(drop=True)
     mejor = tabla.iloc[0]["modelo"] if len(tabla) else "ensemble"
+    if devolver_oof:
+        return tabla, mejor, oof, np.asarray(y)
     return tabla, mejor
+
+
+def tabla_calibracion(P, y, n_bins=10):
+    """Mide la calibración de un modelo 1/X/2 (reliability + ECE).
+
+    Backtesting sin fuga: ``P`` es la matriz (n, 3) de probabilidades
+    OUT-OF-FOLD de un modelo (orden de clases 1/X/2, p.ej. ``oof[mejor]`` de
+    ``evaluar_modelos(..., devolver_oof=True)``) e ``y`` los resultados reales.
+
+    Se evalúa en formato *one-vs-rest*: cada partido aporta 3 pares
+    (prob. predicha de la clase c, ocurrió o no esa clase). Se agrupan en
+    ``n_bins`` tramos de probabilidad y, por tramo, se compara la probabilidad
+    media predicha (``conf``) con la frecuencia observada (``frec_obs``). Un
+    modelo bien calibrado tiene ``frec_obs ≈ conf`` (puntos sobre la diagonal).
+
+    Devuelve ``(tabla, ece)``:
+      * ``tabla``: una fila por tramo con [bin_lo, bin_hi, n, conf, frec_obs, gap];
+      * ``ece``: *Expected Calibration Error* (promedio de |frec_obs − conf|
+        ponderado por nº de casos; menor = mejor calibrado).
+    """
+    P = np.asarray(P, dtype=float)
+    clases = ["1", "X", "2"]
+    y = np.asarray(y)
+    if P.size == 0 or np.isnan(P).any() or len(P) != len(y):
+        return pd.DataFrame(), float("nan")
+
+    onehot = np.array([[1.0 if c == yi else 0.0 for c in clases] for yi in y])
+    probs = P.reshape(-1)              # 3*n probabilidades predichas
+    aciertos = onehot.reshape(-1)      # 1 si la clase ocurrió, 0 si no
+    bordes = np.linspace(0.0, 1.0, n_bins + 1)
+    idx = np.clip(np.digitize(probs, bordes[1:-1]), 0, n_bins - 1)
+
+    filas, total, ece = [], len(probs), 0.0
+    for b in range(n_bins):
+        sel = idx == b
+        nb = int(sel.sum())
+        if nb == 0:
+            continue
+        conf = float(probs[sel].mean())
+        frec = float(aciertos[sel].mean())
+        ece += (nb / total) * abs(frec - conf)
+        filas.append({
+            "bin_lo": round(float(bordes[b]), 2),
+            "bin_hi": round(float(bordes[b + 1]), 2),
+            "n": nb,
+            "conf": round(conf, 4),
+            "frec_obs": round(frec, 4),
+            "gap": round(frec - conf, 4),
+        })
+    return pd.DataFrame(filas), round(float(ece), 4)
 
 
 # ===========================================================================

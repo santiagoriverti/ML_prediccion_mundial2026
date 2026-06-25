@@ -43,6 +43,8 @@ fixture y cuadro final):
 - Tabla por partido pendiente: `P(1/X/2)` (del mejor modelo), goles esperados y
   marcador más probable.
 - **Comparación de modelos** (log-loss / accuracy / Brier) y el modelo elegido.
+- **Calibración (backtesting)**: reliability diagram + ECE por modelo (¿las
+  probabilidades son confiables?), con las mismas predicciones out-of-fold.
 - **Ranking de probabilidad de ser campeón** por selección.
 - Probabilidad de **alcanzar cada ronda** (32avos → final) y de **ganar/clasificar**
   por grupo.
