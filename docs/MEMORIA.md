@@ -33,11 +33,14 @@ se cargan nuevos resultados en el Excel y se reejecuta el notebook.
   los reales del ranking 19-nov-2025 (ver §5 y §8 para el método).
 - **Valor de plantel** (Transfermarkt jun-2026) cargado para las 48 y conectado como
   feature `d_valor_plantel`.
+- **Localía moderada en eliminatorias** activada (`FACTOR_LOCALIA_KO=0.5`): los
+  anfitriones suben (ver §5).
 - Pipeline probado de punta a punta. **20.000 corridas Monte Carlo en ~9 s.**
-- Pronóstico actual (top campeón, con esos 54 resultados):
-  Argentina ~8,3 % · Alemania ~8,0 % · Francia ~7,8 % · España ~6,3 % ·
-  Brasil ~6,3 % · Portugal ~5,7 % · EE.UU. ~5,3 % · México ~5,3 % …
-  (44 selecciones con prob > 0, suma = 1,0).
+- Pronóstico actual (top campeón, con esos 54 resultados y localía KO 0.5):
+  EE.UU. ~8,7 % · México ~8,3 % · Argentina ~8,0 % · Alemania ~7,1 % ·
+  Francia ~7,0 % · Brasil ~5,8 % · España ~5,8 % · Portugal ~5,4 % …
+  (44 selecciones con prob > 0, suma = 1,0). Con `FACTOR_LOCALIA_KO=0.3`
+  Argentina vuelve a ser 1ª (~8,5 %).
 
 ## 3. Cómo retomar mañana (pasos)
 
@@ -75,7 +78,7 @@ Excel  ─► data_loader.cargar_datos()        → equipos, fixture, bracket
 | **Puntos FIFA de 11 selecciones (rank exacto + puntos reconstruidos)** | Faltaban los Puntos FIFA de 11 equipos (rank 50–86). Se cargó el **rank exacto** del 19-nov-2025 (fuente: ranking del sorteo del Mundial, validado contra los 5 ya presentes) y los **puntos se reconstruyeron del rank** con la recta rank→puntos del propio Excel (pendiente −3,34 pts/rank, RMSE cola 2,0; validado vs Arabia Saudita real ±4). **No son los decimales literales publicados**, son estimaciones ±~5 pts. | Los puntos exactos sub-60 de esa edición no están accesibles sin JS; la estimación es muy superior a la imputación cruda y mantiene la misma edición. |
 | **Regularización fuerte Dixon-Coles** | `lambda_prior=8.0` (prior L2 hacia ataque/defensa derivados del rating). | Con ~1 partido por equipo, sin esto un 7-1 (Alemania) o un 0-0 (España vs Cabo Verde) distorsionaba todo. |
 | **Cotas en la MLE** | gamma∈[0, 0.28], rho∈[−0.15, 0.15], intercept∈[log 0.4, log 2.2]. | Evita que la verosimilitud se desboque con muestra chica. |
-| **Localía sólo en grupos** | Anfitriones (MEX/USA/CAN) reciben ventaja en fase de grupos; **eliminatorias = sede neutral**. | Sin mapeo partido→estadio, darles ventaja en las 7 rondas inflaba absurdamente a los anfitriones (~53 % combinado). |
+| **Localía: plena en grupos, MODERADA en eliminatorias** | Anfitriones (MEX/USA/CAN) reciben ventaja **plena** en grupos y una **fracción** (`FACTOR_LOCALIA_KO=0.5`) en cada partido de eliminatoria, por jugar en Norteamérica. | Localía plena en las 7 rondas inflaba a los anfitriones (~53 % combinado); neutral total ignoraba un efecto real. Con 0.5 suman ~21 % (USA/MEX ~8 %); con 0.3 ~18 % y Argentina sigue 1ª. Tuneable. El cuadro post-32avos es aproximado, así que es un efecto agregado, no estadio por estadio. |
 | **Desempate de grupos = FIFA oficial** | Puntos → DG global → GF global → **head-to-head** entre empatados (pts, DG, GF) → fair-play/sorteo (azar). | El enunciado decía "head-to-head primero", pero la regla **oficial FIFA** aplica primero los criterios globales y recién después el H2H. Se implementó la oficial real. |
 | **8 mejores terceros** | Ranking por (pts, DG, GF) y asignación a los slots `3º X/Y/Z` del bracket por **matching bipartito** respetando la elegibilidad de cada slot. | Reproduce la regla FIFA usando los cruces que ya trae la hoja `Eliminatorias`. |
 | **Cuadro post-32avos** | Sólo los 32avos están definidos en el Excel; las rondas siguientes se arman como **árbol binario** en el orden listado. | La hoja deja en blanco 16avos→Final. Es adaptable si se completan esos slots. |
@@ -93,7 +96,8 @@ Excel  ─► data_loader.cargar_datos()        → equipos, fixture, bracket
   - `actualizar_elo(..., K=32.0)` — velocidad de actualización del Elo.
   - `simular_torneo(..., n_sims=20000, semilla=2026)` — corridas (subir a 50000
     para más precisión, ~20-30 s).
-  - Eliminatorias forzadas a `anf = 0.0` (sede neutral) — ver sección 5.
+  - `FACTOR_LOCALIA_KO = 0.5` — fracción de localía a los anfitriones en
+    eliminatorias (0.0 = neutral, 1.0 = ventaja plena de grupos). Ver sección 5.
 
 ## 7. Probar el pipeline en local (sin Colab)
 

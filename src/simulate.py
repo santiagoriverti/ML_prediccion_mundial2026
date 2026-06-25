@@ -14,8 +14,9 @@ Flujo:
        * resuelve cada grupo con el desempate OFICIAL FIFA,
        * elige los 8 mejores terceros y los asigna a los slots del bracket,
        * arma el cuadro de Eliminatorias y simula hasta la final,
-       * en knockouts, los empates se resuelven por prórroga/penales según
-         fuerza (no 50/50).
+       * en knockouts da localía MODERADA a los anfitriones (FACTOR_LOCALIA_KO,
+         no la ventaja plena de grupos) y los empates se resuelven por
+         prórroga/penales según fuerza (no 50/50).
 
 Desempate de grupos (FIFA oficial):
    1) Puntos (todos los partidos del grupo)
@@ -42,6 +43,13 @@ from models import elo_esperado
 # Orden de rondas para el seguimiento de "hasta dónde llegó" cada selección.
 RONDAS = ["Fase de grupos", "32avos", "16avos", "Cuartos",
           "Semifinales", "Final", "Campeón"]
+
+# Localía en eliminatorias: los anfitriones (MEX/USA/CAN) juegan la fase final en
+# Norteamérica con apoyo local, pero NO se les da la ventaja plena de grupos (eso
+# inflaba absurdamente sus probabilidades). Se aplica una fracción de la ventaja.
+# El cuadro post-32avos es aproximado, así que esto modela el efecto "anfitrión en
+# casa" de forma agregada, no estadio por estadio. 0.0 = neutral; 1.0 = ventaja plena.
+FACTOR_LOCALIA_KO = 0.5
 
 
 # ===========================================================================
@@ -348,8 +356,9 @@ def _una_corrida(ctx, gen, rng, ga_row, gb_row):
     cruces = [(resolver(s1, idp), resolver(s2, idp))
               for (idp, s1, s2) in ctx["cruces_def"]]
 
-    # --- Eliminatorias (sede neutral) ---
+    # --- Eliminatorias (localía moderada para anfitriones; ver FACTOR_LOCALIA_KO) ---
     nombres = ["32avos", "16avos", "Cuartos", "Semifinales", "Final"]
+    sede = ctx["sede"]
     actual = cruces
     for nombre in nombres:
         ganadores = []
@@ -364,13 +373,15 @@ def _una_corrida(ctx, gen, rng, ga_row, gb_row):
                 ganadores.append(e2); continue
             if e2 is None:
                 ganadores.append(e1); continue
-            ga, gb = gen.muestrear(e1, e2, 0.0)
+            # Anfitrión en casa: fracción de la ventaja (no plena) si uno es sede.
+            anf = FACTOR_LOCALIA_KO * (sede.get(e1, 0.0) - sede.get(e2, 0.0))
+            ga, gb = gen.muestrear(e1, e2, anf)
             if ga > gb:
                 gan = e1
             elif gb > ga:
                 gan = e2
             else:  # prórroga/penales según fuerza
-                gan = e1 if rng.random() < gen.prob_gana_a(e1, e2, 0.0) else e2
+                gan = e1 if rng.random() < gen.prob_gana_a(e1, e2, anf) else e2
             ganadores.append(gan)
         if nombre == "Final":
             for gan in ganadores:

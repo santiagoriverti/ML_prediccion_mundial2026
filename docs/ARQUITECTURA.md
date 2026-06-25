@@ -79,7 +79,8 @@ Actualización de Elo y simulación Monte Carlo del torneo.
   `_asignar_terceros` (**matching bipartito** de los 8 mejores terceros a los slots
   `3º X/Y/Z` respetando elegibilidad; `scipy.linear_sum_assignment`),
   `_parse_slot` (interpreta `1º C` / `3º A/B/C/D/F`), `_una_corrida`, `_subir_ronda`.
-- **Eliminatorias = sede neutral** (`anf=0.0`); empates resueltos por fuerza.
+- **Eliminatorias = localía moderada** para anfitriones (`FACTOR_LOCALIA_KO`, fracción
+  de la ventaja de grupos; 0.0 = neutral); empates resueltos por fuerza.
 
 ## `viz.py`
 Gráficos guardados en `outputs/`.

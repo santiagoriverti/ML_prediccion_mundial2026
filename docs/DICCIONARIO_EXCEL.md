@@ -29,6 +29,12 @@ y **cómo cargar resultados nuevos** para que el pronóstico se recalcule solo.
 | `Fixture_Grupos` | 72 | **se carga acá** | resultados de grupos (input principal) |
 | `Posiciones` | 48 | se calcula sola | no se usa directo (se recalcula en código) |
 | `Eliminatorias` | 34 | **se carga acá** | cuadro final + resultados de la fase final |
+| `Sedes` | 16 | referencia | ciudad/país/estadio/altitud de las 16 sedes (para completar la col `Sede`) |
+
+> Columna **`Sede`** agregada (vacía) en `Fixture_Grupos` y `Eliminatorias`: lista para
+> mapear cada partido a su ciudad-sede (ver hoja `Sedes` para la altitud). Hoy el modelo
+> **no la usa** (la localía de eliminatorias se aplica por nación anfitriona, no por
+> estadio); queda como estructura para un refinamiento futuro partido→estadio.
 
 > Diferencias con el diccionario teórico original: **no existe columna `Elo`**
 > en `Selecciones` ni la hoja **`Partidos_modelo`**. El rating de fuerza se deriva
