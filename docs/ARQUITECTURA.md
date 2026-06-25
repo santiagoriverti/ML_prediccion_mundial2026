@@ -1,4 +1,4 @@
-# 🏗️ ARQUITECTURA DEL CÓDIGO
+# ARQUITECTURA DEL CÓDIGO
 
 Referencia de cada módulo de `src/` y sus funciones principales. Todo en español,
 modular y comentado. El notebook `notebooks/prediccion_mundial2026.ipynb` orquesta

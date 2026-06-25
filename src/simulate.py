@@ -3,7 +3,7 @@
 simulate.py
 ===========
 Actualización de Elo con los resultados ya cargados + simulación Monte Carlo
-del torneo completo (grupos → cuadro final) usando el modelo de goles
+del torneo completo (grupos -> cuadro final) usando el modelo de goles
 Dixon-Coles.
 
 Flujo:
@@ -24,7 +24,7 @@ Desempate de grupos (FIFA oficial):
    4) Puntos entre los empatados (head-to-head)
    5) Diferencia de gol entre los empatados
    6) Goles a favor entre los empatados
-   7) Fair-play / sorteo  → se resuelve al azar
+   7) Fair-play / sorteo  -> se resuelve al azar
 NOTA: el enunciado mencionaba "head-to-head primero"; la regla oficial FIFA
 aplica primero los criterios GLOBALES (DG, GF) y recién después el head-to-head
 entre equipos aún igualados. Se implementa la regla oficial real.

@@ -30,7 +30,7 @@ from features import COLUMNAS_FEATURES, matriz_modelo
 # ===========================================================================
 # 1) ELO PROBABILÍSTICO (baseline)
 # ===========================================================================
-# Escala Elo clásica: diferencia de 400 → 10:1 en cuotas de victoria.
+# Escala Elo clásica: diferencia de 400 -> 10:1 en cuotas de victoria.
 ELO_ESCALA = 400.0
 VENTAJA_ANFITRION = 45.0   # bonus de rating para el co-anfitrión (puntos Elo)
 

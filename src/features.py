@@ -118,7 +118,7 @@ def construir_dataset_partidos(equipos: pd.DataFrame,
             va = ea.get(col, np.nan)
             vb = eb.get(col, np.nan)
             dif = (va - vb) if (pd.notna(va) and pd.notna(vb)) else np.nan
-            # Para el ranking, "mejor" es menor → invertimos para que +favorezca a A
+            # Para el ranking, "mejor" es menor -> invertimos para que +favorezca a A
             if col == "ranking_fifa" and pd.notna(dif):
                 dif = -dif
             fila[nombre] = dif
@@ -128,7 +128,7 @@ def construir_dataset_partidos(equipos: pd.DataFrame,
         sb = float(eb.get("es_sede", 0) or 0)
         fila["anfitrion"] = sa - sb
 
-        # Altitud: el Excel no mapea partido→estadio; aproximamos vía anfitrión
+        # Altitud: el Excel no mapea partido->estadio; aproximamos vía anfitrión
         # México (juega en altura). Dejamos columna lista para datos futuros.
         fila["altitud"] = 0.0
 

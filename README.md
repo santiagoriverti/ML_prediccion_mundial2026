@@ -1,4 +1,4 @@
-# 🏆 ML_prediccion_mundial2026
+# ML_prediccion_mundial2026
 
 Predicción de resultados y del **campeón del Mundial 2026** combinando
 econometría (Elo + Dixon-Coles/Poisson) y Machine Learning (logit multinomial,
@@ -8,7 +8,7 @@ resultados en el Excel insumo y se reejecuta el notebook.
 
 [![Open in Colab](https://colab.research.google.com/assets/colab-badge.svg)](https://colab.research.google.com/github/santiagoriverti/ML_prediccion_mundial2026/blob/main/notebooks/prediccion_mundial2026.ipynb)
 
-> ⚠️ Este proyecto entrega **probabilidades**, no recomendaciones de apuestas.
+> Este proyecto entrega **probabilidades**, no recomendaciones de apuestas.
 
 ---
 
@@ -55,7 +55,7 @@ pip install -r requirements.txt
 jupyter notebook notebooks/prediccion_mundial2026.ipynb
 ```
 
-## ♻️ Cómo cargar resultados nuevos y reejecutar
+## Cómo cargar resultados nuevos y reejecutar
 
 1. Abrí `Mundial_2026_fuente_datos.xlsx`.
 2. Cargá los goles de los partidos jugados:
@@ -77,7 +77,7 @@ ML_prediccion_mundial2026/
 ├── requirements.txt
 ├── notebooks/
 │   └── prediccion_mundial2026.ipynb   # notebook principal (Colab)
-├── docs/                              # 🧠 memoria del proyecto (ver abajo)
+├── docs/                              # memoria del proyecto (ver abajo)
 │   ├── MEMORIA.md                     # handoff: cómo retomar, decisiones, parámetros
 │   ├── DICCIONARIO_EXCEL.md           # hojas del Excel + cómo cargar resultados
 │   └── ARQUITECTURA.md                # referencia de módulos y funciones
@@ -90,7 +90,7 @@ ML_prediccion_mundial2026/
 └── outputs/                           # CSVs y figuras generadas
 ```
 
-## 🧠 Documentación / memoria del proyecto
+## Documentación / memoria del proyecto
 
 Para retomar el proyecto en otra sesión, leer [`docs/MEMORIA.md`](docs/MEMORIA.md)
 (estado, cómo actualizar el Excel, decisiones de modelado y parámetros),

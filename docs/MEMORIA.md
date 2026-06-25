@@ -1,4 +1,4 @@
-# 🧠 MEMORIA DEL PROYECTO — ML_prediccion_mundial2026
+# MEMORIA DEL PROYECTO — ML_prediccion_mundial2026
 
 > Documento maestro para **retomar el proyecto desde cualquier sesión**.
 > Última actualización: **2026-06-25**. Mantené este archivo al día cuando cambien
@@ -27,12 +27,13 @@ se cargan nuevos resultados en el Excel y se reejecuta el notebook.
 
 - **48 selecciones**, 12 grupos (A–L). Confeds: UEFA 16, CAF 10, AFC 9,
   CONCACAF 6, CONMEBOL 6, OFC 1.
-- **34 de 72 partidos de grupo ya cargados** (fecha 1 completa de los 12 grupos +
-  parte de la fecha 2). El resto se simula.
+- **54 de 72 partidos de grupo ya cargados** (fechas 1 y 2 completas de los 12
+  grupos + parte de la fecha 3). El resto se simula.
 - Pipeline probado de punta a punta. **20.000 corridas Monte Carlo en ~9 s.**
-- Pronóstico actual (top campeón, con esos 34 resultados):
-  Alemania ~8,4 % · Argentina ~7,2 % · EE.UU. ~6,8 % · Francia ~5,4 % ·
-  Brasil ~5,3 % · Inglaterra ~5,2 % … (47 selecciones con prob > 0, suma = 1,0).
+- Pronóstico actual (top campeón, con esos 54 resultados):
+  Argentina ~8,3 % · Alemania ~7,7 % · Francia ~7,4 % · España ~6,3 % ·
+  Brasil ~6,1 % · Portugal ~5,5 % · México ~5,3 % · EE.UU. ~5,1 % …
+  (44 selecciones con prob > 0, suma = 1,0).
 
 ## 3. Cómo retomar mañana (pasos)
 
@@ -52,7 +53,7 @@ se cargan nuevos resultados en el Excel y se reejecuta el notebook.
 ```
 Excel  ─► data_loader.cargar_datos()        → equipos, fixture, bracket
        ─► features.imputar_rating_base()     → rating_base (de Puntos FIFA + imputación)
-       ─► simulate.actualizar_elo()          → mueve rating con los 34 resultados
+       ─► simulate.actualizar_elo()          → mueve rating con los resultados cargados
        ─► features.construir_dataset_partidos() → X/y por partido (ΔA-B, target 1/X/2)
        ─► models.DixonColes().entrenar()     → ataque/defensa por equipo (prior Elo)
        ─► models.entrenar_modelos_ml()       → logit / RF / GBM (complementarios)
@@ -70,7 +71,7 @@ Excel  ─► data_loader.cargar_datos()        → equipos, fixture, bracket
 | **Regularización fuerte Dixon-Coles** | `lambda_prior=8.0` (prior L2 hacia ataque/defensa derivados del rating). | Con ~1 partido por equipo, sin esto un 7-1 (Alemania) o un 0-0 (España vs Cabo Verde) distorsionaba todo. |
 | **Cotas en la MLE** | gamma∈[0, 0.28], rho∈[−0.15, 0.15], intercept∈[log 0.4, log 2.2]. | Evita que la verosimilitud se desboque con muestra chica. |
 | **Localía sólo en grupos** | Anfitriones (MEX/USA/CAN) reciben ventaja en fase de grupos; **eliminatorias = sede neutral**. | Sin mapeo partido→estadio, darles ventaja en las 7 rondas inflaba absurdamente a los anfitriones (~53 % combinado). |
-| **Desempate de grupos = FIFA oficial** | Puntos → DG global → GF global → **head-to-head** entre empatados (pts, DG, GF) → fair-play/sorteo (azar). | ⚠️ El enunciado decía "head-to-head primero", pero la regla **oficial FIFA** aplica primero los criterios globales y recién después el H2H. Se implementó la oficial real. |
+| **Desempate de grupos = FIFA oficial** | Puntos → DG global → GF global → **head-to-head** entre empatados (pts, DG, GF) → fair-play/sorteo (azar). | El enunciado decía "head-to-head primero", pero la regla **oficial FIFA** aplica primero los criterios globales y recién después el H2H. Se implementó la oficial real. |
 | **8 mejores terceros** | Ranking por (pts, DG, GF) y asignación a los slots `3º X/Y/Z` del bracket por **matching bipartito** respetando la elegibilidad de cada slot. | Reproduce la regla FIFA usando los cruces que ya trae la hoja `Eliminatorias`. |
 | **Cuadro post-32avos** | Sólo los 32avos están definidos en el Excel; las rondas siguientes se arman como **árbol binario** en el orden listado. | La hoja deja en blanco 16avos→Final. Es adaptable si se completan esos slots. |
 | **Knockouts: empate** | Se resuelve por **fuerza** (prob. Elo), no 50/50, simulando prórroga/penales. | Más realista que una moneda. |
@@ -125,7 +126,7 @@ print(res["campeon"].head(12))
 
 ## 9. Pendientes / mejoras posibles
 
-- Cargar el resto de la fecha 2 y la fecha 3 de grupos a medida que se jueguen.
+- Cargar el resto de la fecha 3 de grupos (faltan 18 partidos) a medida que se jueguen.
 - Completar la hoja **`Eliminatorias`** con resultados de la fase final cuando empiece.
 - (Opcional) Si más adelante se carga **`Predictores_país`** (valor de plantel,
   jugadores en top-5 ligas, etc.), `data_loader` ya los incorpora automáticamente
@@ -134,10 +135,10 @@ print(res["campeon"].head(12))
   localía más fina en eliminatorias (hoy neutral).
 - (Opcional) Calibración out-of-sample / backtesting cuando haya más partidos.
 
-## 10. 🔐 Seguridad (IMPORTANTE)
+## 10. Seguridad (IMPORTANTE)
 
-- El **token de GitHub** usado para crear el repo y el primer push quedó expuesto
-  en el prompt de la sesión inicial. **Rotarlo/revocarlo** en GitHub → *Settings ▸
+- Los **tokens de GitHub** usados para los pushes (el inicial y el de esta sesión)
+  quedaron expuestos en los prompts. **Rotarlos/revocarlos** en GitHub → *Settings ▸
   Developer settings ▸ Personal access tokens*.
 - El token **nunca** se escribió en archivos versionados ni en `.git/config`
   (se usó vía variable de entorno y un header efímero). Verificado.

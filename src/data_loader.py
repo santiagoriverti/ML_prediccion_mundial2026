@@ -8,15 +8,15 @@ estructuras de datos que consume el resto del pipeline.
 Decisiones de diseño importantes (basadas en el archivo REAL, no en el
 diccionario teórico):
 
-* En TODAS las hojas el encabezado está en la fila 2 → ``header=1``.
+* En TODAS las hojas el encabezado está en la fila 2 -> ``header=1``.
 * La clave de unión entre hojas es ``País`` (texto en español con acentos).
   Se normaliza con ``strip``.
 * El archivo NO trae columna "Elo" ni la hoja "Partidos_modelo". Por lo tanto
   el rating base de fuerza se deriva de los **Puntos FIFA** (que son, de hecho,
   un sistema tipo Elo) y se imputan los faltantes. Ver ``features.py``.
-* Hojas "Clasificatorias" y "Predictores_país" hoy vienen vacías → se cargan
+* Hojas "Clasificatorias" y "Predictores_país" hoy vienen vacías -> se cargan
   solo las columnas con datos y, si están vacías, se ignoran.
-* Flags "Sí"/"No" → 1/0. Celdas vacías → NaN (tolerado en todo el pipeline).
+* Flags "Sí"/"No" -> 1/0. Celdas vacías -> NaN (tolerado en todo el pipeline).
 
 Todo el código y los comentarios están en español.
 """

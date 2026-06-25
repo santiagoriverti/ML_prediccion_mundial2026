@@ -1,4 +1,4 @@
-# 📒 DICCIONARIO DEL EXCEL — `Mundial_2026_fuente_datos.xlsx`
+# DICCIONARIO DEL EXCEL — `Mundial_2026_fuente_datos.xlsx`
 
 Descripción del archivo insumo **tal como es realmente** (verificado el 2026-06-25)
 y **cómo cargar resultados nuevos** para que el pronóstico se recalcule solo.
@@ -30,7 +30,7 @@ y **cómo cargar resultados nuevos** para que el pronóstico se recalcule solo.
 | `Posiciones` | 48 | se calcula sola | no se usa directo (se recalcula en código) |
 | `Eliminatorias` | 34 | **se carga acá** | cuadro final + resultados de la fase final |
 
-> ⚠️ Diferencias con el diccionario teórico original: **no existe columna `Elo`**
+> Diferencias con el diccionario teórico original: **no existe columna `Elo`**
 > en `Selecciones` ni la hoja **`Partidos_modelo`**. El rating de fuerza se deriva
 > de **Puntos FIFA** en `features.py`. Ver `MEMORIA.md` §5.
 
@@ -45,7 +45,7 @@ Columnas: `N°` · `País` · `Cód.` · `Grupo` (A–L) · `Pos. grupo` (1–4)
 - `Puntos FIFA` es la **medida de fuerza principal** (de ahí sale `rating_base`).
   Está **vacío en ~13 selecciones** → se imputa.
 - `Sede=Sí` ⇒ co-anfitrión (México/EE.UU./Canadá) ⇒ ventaja de localía en grupos.
-- ⚠️ Hay una **fila de nota al pie** en la columna `País`; el loader la descarta
+- Hay una **fila de nota al pie** en la columna `País`; el loader la descarta
   (exige `Grupo` y `Confederación` válidos).
 
 ### `Historial` (48)
@@ -65,7 +65,7 @@ Columnas: `N°` · `País` · `Cód.` · `Grupo` (A–L) · `Pos. grupo` (1–4)
 Plantillas hoy sin datos → **se ignoran**. Si cargás datos, el loader incorpora
 automáticamente sólo las columnas con valores (no hay que tocar código).
 
-### `Fixture_Grupos` (72 = 12 grupos × 6 partidos) — ⭐ ACÁ CARGÁS RESULTADOS DE GRUPOS
+### `Fixture_Grupos` (72 = 12 grupos × 6 partidos) — ACÁ CARGÁS RESULTADOS DE GRUPOS
 `ID` · `Grupo` · `Jornada` (1/2/3) · `Equipo A` · `Equipo B` ·
 **`Goles A`** · **`Goles B`** · `Jugado` (fórmula) · `Pts A` · `Pts B`.
 - **Cargá los goles en `Goles A` y `Goles B`.**
@@ -78,7 +78,7 @@ Tabla por grupo (`Grupo` · `Pos` · `País` · `PJ`…`Pts` · `Orden prov.`). 
 sola en Excel, pero **el código NO se fía de `Orden prov.`**: recalcula las
 posiciones con el **desempate oficial FIFA** dentro de la simulación.
 
-### `Eliminatorias` (34) — ⭐ ACÁ CARGÁS RESULTADOS DE LA FASE FINAL
+### `Eliminatorias` (34) — ACÁ CARGÁS RESULTADOS DE LA FASE FINAL
 `Ronda` · `Partido` · `Equipo 1` · **`Goles 1`** · **`Goles 2`** · `Equipo 2` · `Notas`.
 - Sólo los **32avos** traen los cruces por posición (`2º A` vs `2º B`,
   `1º E` vs `3º A/B/C/D/F`, …). Esas etiquetas codifican el bracket reglamentario.
@@ -88,7 +88,7 @@ posiciones con el **desempate oficial FIFA** dentro de la simulación.
 
 ---
 
-## ✅ Checklist para actualizar el pronóstico
+## Checklist para actualizar el pronóstico
 
 1. Abrir `Mundial_2026_fuente_datos.xlsx`.
 2. En `Fixture_Grupos`: completar `Goles A` y `Goles B` de los partidos jugados.
