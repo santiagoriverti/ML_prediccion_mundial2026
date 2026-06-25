@@ -43,7 +43,10 @@ Columnas: `N°` · `País` · `Cód.` · `Grupo` (A–L) · `Pos. grupo` (1–4)
 `Confederación` · `Ranking FIFA (19-nov-25)` · `Puntos FIFA (19-nov-25)` ·
 `Sede` (Sí/No) · `Debutante` (Sí/No) · `Títulos mundiales`.
 - `Puntos FIFA` es la **medida de fuerza principal** (de ahí sale `rating_base`).
-  Está **vacío en ~13 selecciones** → se imputa.
+  Ahora está **completo para las 48** (0 imputados). Los Puntos de 11 selecciones
+  (rank 50–86) son **estimaciones reconstruidas del rank** del 19-nov-2025 (±~5 pts),
+  no los decimales literales; los 37 restantes son los publicados exactos. La
+  imputación (mediana confed. − 40) queda como red de seguridad si faltara alguno.
 - `Sede=Sí` ⇒ co-anfitrión (México/EE.UU./Canadá) ⇒ ventaja de localía en grupos.
 - Hay una **fila de nota al pie** en la columna `País`; el loader la descarta
   (exige `Grupo` y `Confederación` válidos).

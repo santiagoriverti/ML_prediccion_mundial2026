@@ -29,10 +29,14 @@ se cargan nuevos resultados en el Excel y se reejecuta el notebook.
   CONCACAF 6, CONMEBOL 6, OFC 1.
 - **54 de 72 partidos de grupo ya cargados** (fechas 1 y 2 completas de los 12
   grupos + parte de la fecha 3). El resto se simula.
+- **Puntos/Ranking FIFA completos para las 48 (0 imputados; antes 11).** Se cargaron
+  los reales del ranking 19-nov-2025 (ver §5 y §8 para el método).
+- **Valor de plantel** (Transfermarkt jun-2026) cargado para las 48 y conectado como
+  feature `d_valor_plantel`.
 - Pipeline probado de punta a punta. **20.000 corridas Monte Carlo en ~9 s.**
 - Pronóstico actual (top campeón, con esos 54 resultados):
-  Argentina ~8,3 % · Alemania ~7,7 % · Francia ~7,4 % · España ~6,3 % ·
-  Brasil ~6,1 % · Portugal ~5,5 % · México ~5,3 % · EE.UU. ~5,1 % …
+  Argentina ~8,3 % · Alemania ~8,0 % · Francia ~7,8 % · España ~6,3 % ·
+  Brasil ~6,3 % · Portugal ~5,7 % · EE.UU. ~5,3 % · México ~5,3 % …
   (44 selecciones con prob > 0, suma = 1,0).
 
 ## 3. Cómo retomar mañana (pasos)
@@ -67,7 +71,8 @@ Excel  ─► data_loader.cargar_datos()        → equipos, fixture, bracket
 | Decisión | Detalle | Motivo |
 |---|---|---|
 | **Rating base = Puntos FIFA** | El Excel real **no trae columna Elo** ni hoja `Partidos_modelo`. Se usa Puntos FIFA (sistema tipo Elo) llevado a escala centrada en 1500. | El diccionario teórico prometía Elo, pero no existe en el archivo. |
-| **Imputación de faltantes** | ~13 selecciones sin Puntos FIFA → mediana de su confederación − 40, o percentil 10 global. Se marca `rating_imputado=1`. | No romper el pipeline; los faltantes suelen ser más débiles. |
+| **Imputación de faltantes** | Mecanismo: si falta Puntos FIFA → mediana de confederación − 40, o percentil 10 global, y se marca `rating_imputado=1`. **Hoy 0 imputados** (se cargaron los 48 reales). Queda como red de seguridad. | No romper el pipeline; los faltantes suelen ser más débiles. |
+| **Puntos FIFA de 11 selecciones (rank exacto + puntos reconstruidos)** | Faltaban los Puntos FIFA de 11 equipos (rank 50–86). Se cargó el **rank exacto** del 19-nov-2025 (fuente: ranking del sorteo del Mundial, validado contra los 5 ya presentes) y los **puntos se reconstruyeron del rank** con la recta rank→puntos del propio Excel (pendiente −3,34 pts/rank, RMSE cola 2,0; validado vs Arabia Saudita real ±4). **No son los decimales literales publicados**, son estimaciones ±~5 pts. | Los puntos exactos sub-60 de esa edición no están accesibles sin JS; la estimación es muy superior a la imputación cruda y mantiene la misma edición. |
 | **Regularización fuerte Dixon-Coles** | `lambda_prior=8.0` (prior L2 hacia ataque/defensa derivados del rating). | Con ~1 partido por equipo, sin esto un 7-1 (Alemania) o un 0-0 (España vs Cabo Verde) distorsionaba todo. |
 | **Cotas en la MLE** | gamma∈[0, 0.28], rho∈[−0.15, 0.15], intercept∈[log 0.4, log 2.2]. | Evita que la verosimilitud se desboque con muestra chica. |
 | **Localía sólo en grupos** | Anfitriones (MEX/USA/CAN) reciben ventaja en fase de grupos; **eliminatorias = sede neutral**. | Sin mapeo partido→estadio, darles ventaja en las 7 rondas inflaba absurdamente a los anfitriones (~53 % combinado). |
@@ -127,6 +132,9 @@ print(res["campeon"].head(12))
   `COLUMNAS_FEATURES` (`features.py`). Hoy la única columna de esas hojas conectada al
   modelo es **`d_valor_plantel`** (derivada del valor de plantel). El resto se carga
   pero no entra al modelo salvo que se agregue a `_FEATURES_DIF` + `COLUMNAS_FEATURES`.
+- **Puntos/Ranking FIFA**: `Selecciones` ahora tiene los 48 completos. Los Puntos de 11
+  selecciones (rank 50–86) son **estimaciones reconstruidas del rank nov-2025** (±~5 pts),
+  no los decimales literales (ver §5). Los 37 restantes son los publicados exactos.
 - Encabezado en la **fila 2**, datos desde la **fila 3** (`header=1`).
 - Clave de unión entre hojas: **`País`** (español con acentos), normalizada con strip.
 - Flags `Sí`/`No` → 1/0. Detalle completo en `DICCIONARIO_EXCEL.md`.
@@ -135,6 +143,11 @@ print(res["campeon"].head(12))
 
 - Cargar el resto de la fecha 3 de grupos (faltan 18 partidos) a medida que se jueguen.
 - Completar la hoja **`Eliminatorias`** con resultados de la fase final cuando empiece.
+- (Hecho jun-2026) Cargados **Puntos/Ranking FIFA** de las 11 selecciones que faltaban
+  → **0 imputados**. Mejoró el log-loss CV (logit 1.004→0.922, gbm 1.344→1.207) y
+  recalibró la fuerza de esos equipos y sus rivales. Los puntos son estimados del rank.
+- (Opcional) Reemplazar esos 11 Puntos FIFA estimados por los **decimales exactos** del
+  ranking 19-nov-2025 si se consiguen de FIFA.com (página por equipo). Cambio menor.
 - (Hecho jun-2026) Cargado **valor de plantel** en `Predictores_país` y conectado al
   modelo como feature `d_valor_plantel` (mejoró el log-loss CV de los 3 modelos ML;
   el titular casi no se mueve porque el ensemble pondera más a Dixon-Coles + Elo).
