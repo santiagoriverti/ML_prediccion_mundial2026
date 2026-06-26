@@ -539,3 +539,111 @@ def bracket_mas_probable(equipos, fixture, bracket, dixon_coles):
               "equipo_2": resolver(s2, idp)}
              for (idp, s1, s2) in ctx["cruces_def"]]
     return pd.DataFrame(filas).sort_values("partido").reset_index(drop=True)
+
+
+def cuadro_completo_probable(equipos, fixture, bracket, dixon_coles):
+    """Juega el **escenario más probable hasta la final** (determinista).
+
+    Resuelve los grupos con su marcador esperado, arma los 32avos (fijando los
+    resultados de eliminatorias ya cargados) y juega CADA ronda eligiendo el
+    **marcador más probable** (Dixon-Coles); si el marcador modal es empate, avanza
+    el más fuerte (prórroga/penales). Devuelve un DataFrame con una fila por partido
+    de cada ronda: ``ronda, partido, equipo_1, equipo_2, marcador, ganador, nota``.
+
+    OJO: es UN escenario coherente (el más probable partido a partido), **no** la
+    probabilidad de campeón —esa sale del Monte Carlo (`simular_torneo`), que
+    mantiene toda la incertidumbre. El campeón de este cuadro puede no ser el
+    favorito del Monte Carlo. Cambia al recargar resultados.
+    """
+    gen = GeneradorGoles(dixon_coles, np.random.default_rng(0))
+    ctx = _precomputar(equipos, fixture, bracket, gen)
+    sede, fixed_ko, rating = ctx["sede"], ctx.get("fixed_ko", {}), gen._rating
+
+    # --- Resolver grupos con el marcador esperado (igual que bracket_mas_probable) ---
+    res_grupo = {}
+    for (grupo, a, b, jugado, gaf, gbf, ip) in ctx["partidos"]:
+        if jugado:
+            ga, gb = gaf, gbf
+        else:
+            ga = int(round(ctx["lam_pend"][ip]))
+            gb = int(round(ctx["mu_pend"][ip]))
+        res_grupo.setdefault(grupo, []).append((a, b, ga, gb))
+    pos_grupo, terceros = {}, []
+    for grupo, r in res_grupo.items():
+        orden = _orden_grupo(ctx["grupos"][grupo], r)
+        for k, pais in enumerate(orden, start=1):
+            pos_grupo[(grupo, k)] = pais
+        if len(orden) >= 3:
+            t = orden[2]
+            pts = gf = gc = 0
+            for a, b, ga, gb in r:
+                if a == t:
+                    gf += ga; gc += gb
+                    pts += 3 if ga > gb else (1 if ga == gb else 0)
+                elif b == t:
+                    gf += gb; gc += ga
+                    pts += 3 if gb > ga else (1 if ga == gb else 0)
+            terceros.append((grupo, t, pts, gf - gc, gf))
+    terceros_ord = sorted(terceros, key=lambda x: (x[2], x[3], x[4]), reverse=True)
+    mejores = [(g, p) for (g, p, *_) in terceros_ord[:8]]
+    asign = (_asignar_terceros(ctx["slots_terceros"], mejores)
+             if ctx["slots_terceros"] else {})
+
+    def resolver(slot, idp):
+        tipo, pos, info = slot
+        return pos_grupo.get((info, pos)) if tipo == "pos" else asign.get(idp)
+
+    cruces = [(idp, resolver(s1, idp), resolver(s2, idp))
+              for (idp, s1, s2) in sorted(ctx["cruces_def"], key=lambda c: c[0])]
+    ids_r1 = [idp for (idp, _, _) in cruces]
+    actual = [(e1, e2) for (_, e1, e2) in cruces]
+
+    # --- Jugar cada ronda con el marcador modal (empate -> penales al más fuerte) ---
+    nombres = ["32avos", "16avos", "Cuartos", "Semifinales", "Final"]
+    filas = []
+    for ridx, ronda in enumerate(nombres):
+        ganadores = []
+        for k, (e1, e2) in enumerate(actual):
+            if e1 is None and e2 is None:
+                ganadores.append(None); continue
+            if e1 is None:
+                ganadores.append(e2); continue
+            if e2 is None:
+                ganadores.append(e1); continue
+            anf = FACTOR_LOCALIA_KO * (sede.get(e1, 0.0) - sede.get(e2, 0.0))
+            fijo = fixed_ko.get(ids_r1[k]) if ridx == 0 else None
+            we = elo_esperado(rating.get(e1, 1500.0), rating.get(e2, 1500.0), anf)
+            if fijo is not None:   # resultado de KO ya cargado: es un hecho fijo
+                g1, g2 = int(fijo[0]), int(fijo[1])
+                if g1 > g2:
+                    gan, nota = e1, "(cargado)"
+                elif g2 > g1:
+                    gan, nota = e2, "(cargado)"
+                else:
+                    gan = e1 if we >= 0.5 else e2
+                    nota = f"(cargado; penales: {gan})"
+            else:
+                # Ganador = quien tiene mayor prob. de AVANZAR (gana en 90' o en la
+                # definición por penales, que favorece al más fuerte).
+                M = dixon_coles.matriz_marcadores(e1, e2, anf)
+                p1 = float(np.tril(M, -1).sum())
+                pX = float(np.trace(M))
+                pa1 = p1 + pX * we                       # prob. de que avance e1
+                gan = e1 if pa1 >= 0.5 else e2
+                # Marcador DECISIVO más probable a favor del que avanza.
+                if gan == e1:
+                    mask = np.tril(np.ones_like(M), -1)  # goles_e1 > goles_e2
+                else:
+                    mask = np.triu(np.ones_like(M), 1)   # goles_e2 > goles_e1
+                gi, gj = np.unravel_index(np.argmax(M * mask), M.shape)
+                g1, g2 = int(gi), int(gj)
+                nota = "(muy parejo)" if abs(pa1 - 0.5) < 0.05 else ""
+            filas.append({"ronda": ronda, "partido": k + 1,
+                          "equipo_1": e1, "equipo_2": e2,
+                          "marcador": f"{g1}-{g2}", "ganador": gan, "nota": nota})
+            ganadores.append(gan)
+        actual = [(ganadores[i], ganadores[i + 1] if i + 1 < len(ganadores) else None)
+                  for i in range(0, len(ganadores), 2)]
+        if not actual:
+            break
+    return pd.DataFrame(filas)
