@@ -28,7 +28,7 @@ se cargan nuevos resultados en el Excel y se reejecuta el notebook.
 
 - **48 selecciones**, 12 grupos (A–L). Confeds: UEFA 16, CAF 10, AFC 9,
   CONCACAF 6, CONMEBOL 6, OFC 1.
-- **54 de 72 partidos de grupo ya cargados** (fechas 1 y 2 completas de los 12
+- **56 de 72 partidos de grupo ya cargados** (fechas 1 y 2 completas de los 12
   grupos + parte de la fecha 3). El resto se simula.
 - **Puntos/Ranking FIFA completos para las 48 (0 imputados; antes 11).** Se cargaron
   los reales del ranking 19-nov-2025 (ver §5 y §8 para el método).
@@ -73,10 +73,14 @@ se cargan nuevos resultados en el Excel y se reejecuta el notebook.
 - Pipeline probado de punta a punta. Notebook ejecutado headless **sin errores**
   con el Excel enriquecido (raw URL). End-to-end ~3-3,5 min (auto-tuning + OOF +
   20.000 corridas Monte Carlo).
-- Pronóstico actual (top campeón, 54 resultados, blend top-3 = elo/rf/xgb, localía
-  KO 0.3): **Argentina ~7,0 % · EE.UU. ~6,7 % · Francia ~6,6 % · México ~6,6 % ·
-  España ~5,6 % · Alemania ~5,5 % · Brasil ~5,0 %** … (suma = 1,0). Cambia al
-  recargar resultados o al re-tunear. ECE del blend ≈ 0,059 (bien calibrado).
+- Pronóstico actual (top campeón, **56 resultados**, blend top-3 data-driven, localía
+  KO 0.3): **Argentina ~7,2 % · EE.UU. ~7,2 % · Francia ~6,3 % · México ~6,3 % ·
+  España ~5,5 % · Portugal ~5,1 %** … (suma = 1,0). El top-3 y los pesos se
+  recalculan en cada corrida (p.ej. gbm/rf/extra con 56 partidos). ECE del blend
+  ≈ 0,05 (bien calibrado).
+- **(jun-2026) XGBoost robusto entre versiones**: el ML ahora entrena con clases
+  ENTERAS (0/1/2) y usa el `XGBClassifier` nativo (antes un wrapper fallaba en la
+  versión de XGBoost de Colab → `xgb` daba `nan`). Ver §5.
 
 ## 3. Cómo retomar mañana (pasos)
 

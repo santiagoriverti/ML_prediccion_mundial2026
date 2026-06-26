@@ -214,43 +214,21 @@ class DixonColes:
 # ===========================================================================
 # 3) MODELOS ML SUPERVISADOS (zoo amplio + auto-tuning + calibración)
 # ===========================================================================
-# XGBoost exige etiquetas enteras (0,1,2). Este wrapper (composición, no herencia)
-# codifica las clases 1/X/2 hacia un XGBClassifier interno y expone ``classes_``
-# como strings, para que el resto del pipeline (predecir_ml, calibración, log_loss)
-# las maneje igual que a los demás modelos. Compatible con clone/RandomizedSearchCV.
-try:
-    import xgboost as _xgb  # noqa: F401  (sólo para detectar disponibilidad)
-    from sklearn.base import BaseEstimator, ClassifierMixin
-    from sklearn.preprocessing import LabelEncoder as _LE
+# Codificación de clases 1/X/2 -> enteros 0/1/2. XGBoost EXIGE etiquetas enteras;
+# para evitar wrappers frágiles (que fallaban en algunas versiones de XGBoost en
+# Colab), TODO el ML se entrena con ``y`` entero usando este mapeo fijo. El orden
+# 0,1,2 == ["1","X","2"], así que ``predict_proba[:, j]`` corresponde a CLASES[j].
+CLASES_1X2 = ["1", "X", "2"]
+_MAP_CLASE = {"1": 0, "X": 1, "2": 2}
+_INV_CLASE = {0: "1", 1: "X", 2: "2"}
 
-    class XGBClasifStr(BaseEstimator, ClassifierMixin):
-        def __init__(self, n_estimators=200, max_depth=3, learning_rate=0.1,
-                     subsample=1.0, random_state=42):
-            self.n_estimators = n_estimators
-            self.max_depth = max_depth
-            self.learning_rate = learning_rate
-            self.subsample = subsample
-            self.random_state = random_state
 
-        def fit(self, X, y):
-            from xgboost import XGBClassifier
-            self._le = _LE().fit(y)
-            self._m = XGBClassifier(
-                n_estimators=self.n_estimators, max_depth=self.max_depth,
-                learning_rate=self.learning_rate, subsample=self.subsample,
-                random_state=self.random_state, n_jobs=1,
-                eval_metric="mlogloss", tree_method="hist", verbosity=0)
-            self._m.fit(X, self._le.transform(y))
-            self.classes_ = self._le.classes_   # strings, alineado con proba
-            return self
-
-        def predict_proba(self, X):
-            return self._m.predict_proba(X)
-
-        def predict(self, X):
-            return self._le.inverse_transform(self._m.predict(X))
-except Exception:   # xgboost no instalado
-    XGBClasifStr = None
+def _xgb_disponible():
+    try:
+        import xgboost  # noqa: F401
+        return True
+    except Exception:
+        return False
 
 
 def _zoo_modelos(random_state: int = 42):
@@ -294,11 +272,14 @@ def _zoo_modelos(random_state: int = 42):
                   "max_iter": [100, 200],
                   "min_samples_leaf": [5, 10, 20]}),
     }
-    if XGBClasifStr is not None:   # XGBoost (opcional)
+    if _xgb_disponible():   # XGBoost (opcional) -- nativo, con y entero
+        from xgboost import XGBClassifier
         zoo["xgb"] = (
-            XGBClasifStr(random_state=rs),
+            XGBClassifier(random_state=rs, n_jobs=1, eval_metric="mlogloss",
+                          tree_method="hist", verbosity=0),
             {"n_estimators": [100, 200, 300], "max_depth": [2, 3, 4],
-             "learning_rate": [0.03, 0.05, 0.1], "subsample": [0.8, 1.0]})
+             "learning_rate": [0.03, 0.05, 0.1], "subsample": [0.8, 1.0],
+             "min_child_weight": [1, 3, 5], "reg_lambda": [1.0, 3.0]})
     try:   # LightGBM (opcional)
         from lightgbm import LGBMClassifier
         zoo["lgbm"] = (
@@ -340,6 +321,8 @@ def entrenar_modelos_ml(dataset: pd.DataFrame, random_state: int = 42,
             "en Elo + Dixon-Coles.")
         return {}, reporte
     reporte["clases"] = y.value_counts().to_dict()
+    # TODO el ML se entrena con etiquetas ENTERAS (0/1/2) -> XGBoost nativo OK.
+    y = y.map(_MAP_CLASE).astype(int)
 
     min_clase = int(y.value_counts().min())
     n_splits = int(min(5, max(2, min_clase)))
@@ -400,15 +383,20 @@ def entrenar_modelos_ml(dataset: pd.DataFrame, random_state: int = 42,
 def predecir_ml(modelos: dict, fila_features: pd.DataFrame) -> dict:
     """Predice (p1,pX,p2) con cada modelo ML para una fila de features.
 
-    Devuelve {nombre: (p1,pX,p2)}. Reordena las clases a (1, X, 2).
+    Los modelos se entrenan con clases ENTERAS (0=1, 1=X, 2=2); acá se mapea
+    cada columna de ``predict_proba`` a su etiqueta 1/X/2 vía ``classes_``.
+    Devuelve {nombre: (p1,pX,p2)}.
     """
-    orden = ["1", "X", "2"]
     salida = {}
     X = fila_features[COLUMNAS_FEATURES].astype(float).fillna(0.0)
     for nombre, modelo in modelos.items():
         proba = modelo.predict_proba(X)[0]
-        clases = list(modelo.classes_)
-        p = {c: proba[clases.index(c)] if c in clases else 0.0 for c in orden}
+        # classes_ son enteros (0/1/2); mapear cada uno a su etiqueta.
+        p = {"1": 0.0, "X": 0.0, "2": 0.0}
+        for col, cls in enumerate(modelo.classes_):
+            etiqueta = _INV_CLASE.get(int(cls))
+            if etiqueta is not None:
+                p[etiqueta] = float(proba[col])
         salida[nombre] = (p["1"], p["X"], p["2"])
     return salida
 

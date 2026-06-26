@@ -461,7 +461,9 @@ def simular_torneo(equipos, fixture, bracket, dixon_coles,
     for p in paises:
         fila = {"pais": p}
         for ridx, rname in enumerate(RONDAS):
-            if rname == "Fase de grupos":
+            # "Fase de grupos" no es una ronda de avance; "Campeón" ya viene de
+            # df_camp como prob_campeon (evita columna duplicada prob_Campeón).
+            if rname in ("Fase de grupos", "Campeón"):
                 continue
             veces = sum(conteo[p][RONDAS[k]] for k in range(ridx, len(RONDAS)))
             fila[f"prob_{rname}"] = veces / n_sims
