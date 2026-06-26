@@ -149,6 +149,10 @@ Excel  ─► data_loader.cargar_datos()        → equipos, fixture, bracket
     eliminatorias (0.0 = neutral, 1.0 = ventaja plena de grupos). Ver sección 5.
   - `bracket_mas_probable(...)` — cuadro de 32avos del escenario más probable
     (nombres de selección) que llena `Equipo 1`/`Equipo 2` de Eliminatorias.
+  - `cuadro_completo_probable(...)` — juega el camino más probable HASTA LA FINAL
+    (32avos→Final): por cada cruce devuelve marcador decisivo modal, quién avanza
+    y el campeón del escenario. Respeta KO ya cargados. Salida `cuadro_completo.csv`,
+    sección 12b del notebook. Es un escenario partido a partido, no la prob. campeón.
 - `src/models.py`
   - `_zoo_modelos(rs)` — define el zoo (sklearn + XGBoost/LightGBM opcionales) con su
     espacio de búsqueda. `XGBClasifStr` envuelve XGBoost para clases string 1/X/2.

@@ -55,6 +55,10 @@ fixture y cuadro final):
 - Probabilidad de **alcanzar cada ronda** (32avos → final) y de **ganar/clasificar**
   por grupo.
 - **Cuadro de eliminatorias del escenario más probable** (con nombres de selección).
+- **Camino más probable hasta la final**: ronda por ronda (32avos → Final), quién
+  enfrenta a quién, el marcador decisivo más probable, quién avanza y el campeón de
+  ese escenario (`outputs/cuadro_completo.csv`). Es un escenario partido a partido,
+  no la probabilidad de campeón (esa la da el Monte Carlo).
 - Gráficos (barras de campeón, heatmap de avance) y CSVs en `outputs/`.
 
 ## Cómo ejecutarlo

@@ -3,6 +3,17 @@
 Formato: cambios agrupados por fecha. El proyecto entrega **probabilidades**, no
 consejos de apuestas.
 
+## 2026-06-25 — Camino más probable hasta la final
+
+### Nueva salida
+- `simulate.cuadro_completo_probable`: juega el **escenario más probable hasta la
+  final** (32avos → 16avos → Cuartos → Semis → Final). Para cada cruce: quién juega,
+  el **marcador decisivo más probable**, quién avanza (mayor prob. de pasar; "(muy
+  parejo)" si es ~50/50) y el campeón de ese escenario. Respeta los resultados de KO
+  ya cargados. Nuevo `outputs/cuadro_completo.csv` y seccion 12b del notebook.
+  Aclaración: es un escenario partido a partido, **no** la probabilidad de campeón
+  (esa la da el Monte Carlo de `simular_torneo`).
+
 ## 2026-06-25 — Predictor final = mejor combinación medida
 
 ### Mejora
