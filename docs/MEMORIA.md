@@ -73,11 +73,12 @@ se cargan nuevos resultados en el Excel y se reejecuta el notebook.
 - Pipeline probado de punta a punta. Notebook ejecutado headless **sin errores**
   con el Excel enriquecido (raw URL). End-to-end ~3-3,5 min (auto-tuning + OOF +
   20.000 corridas Monte Carlo).
-- Pronóstico actual (top campeón, **56 resultados**, blend top-3 data-driven, localía
-  KO 0.3): **Argentina ~7,2 % · EE.UU. ~7,2 % · Francia ~6,3 % · México ~6,3 % ·
-  España ~5,5 % · Portugal ~5,1 %** … (suma = 1,0). El top-3 y los pesos se
-  recalculan en cada corrida (p.ej. gbm/rf/extra con 56 partidos). ECE del blend
-  ≈ 0,05 (bien calibrado).
+- Pronóstico actual (top campeón, **56 resultados**, predictor final elegido por
+  log-loss OOF, localía KO 0.3): **Argentina ~7,1 % · EE.UU. ~6,9 % · Francia ~6,5 % ·
+  México ~6,0 % · España ~5,7 % · Brasil ~5,3 %** … (suma = 1,0). Con 56 partidos el
+  predictor final ganador es el **ensemble fijo** (Elo/DC con más peso; log-loss OOF
+  0,934, ECE ≈ 0,08); se recalcula en cada corrida. El top-3 individual (informativo)
+  hoy es gbm/rf/extra.
 - **(jun-2026) XGBoost robusto entre versiones**: el ML ahora entrena con clases
   ENTERAS (0/1/2) y usa el `XGBClassifier` nativo (antes un wrapper fallaba en la
   versión de XGBoost de Colab → `xgb` daba `nan`). Ver §5.
