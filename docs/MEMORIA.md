@@ -125,7 +125,9 @@ Excel  ─► data_loader.cargar_datos()        → equipos, fixture, bracket
 | **Cuadro post-32avos** | Sólo los 32avos están definidos en el Excel; las rondas siguientes se arman como **árbol binario** en el orden listado. | La hoja deja en blanco 16avos→Final. Es adaptable si se completan esos slots. |
 | **Knockouts: empate** | Se resuelve por **fuerza** (prob. Elo), no 50/50, simulando prórroga/penales. | Más realista que una moneda. |
 | **3 features nuevas (DT, clasificatoria, top-5)** | Datos **curados** (estimaciones ~early-2026), no oficiales. El modelo usa diferencias A-B, robustas a errores chicos. Clasificatoria = %Pts × dificultad de confederación (ponderación pedida). | El Excel no traía estos datos; aportan señal ordinal (mejor DT / mejor clasificatoria / más jugadores de elite). |
-| **Zoo de ML + auto-tuning + top-3 blend** | logit/RF/ExtraTrees/GBM/HistGBM + XGBoost/LightGBM (opcionales). Hiperparámetros por `RandomizedSearchCV`. Predicción 1/X/2 = **blend ponderado de los 3 mejores** por CV out-of-fold. Calibración sigmoide consistente entre OOF y modelos finales. | "Modelos avanzados" + no apostar a uno solo. Con N=54 el núcleo Elo/DC suele liderar; el blend lo combina con el mejor ML de forma data-driven. |
+| **Zoo de ML + auto-tuning + top-3 blend** | logit/RF/ExtraTrees/GBM/HistGBM + XGBoost/LightGBM (opcionales). Hiperparámetros por `RandomizedSearchCV`. Calibración sigmoide consistente entre OOF y modelos finales. | "Modelos avanzados" + no apostar a uno solo. Con N≈56 el núcleo Elo/DC suele liderar; el blend lo combina con el mejor ML de forma data-driven. |
+| **Predictor final = mejor combinación medida** | `elegir_predictor_final` compara por log-loss OOF el **blend top-3** vs un **blend diverso** (todos los modelos base ∝ 1/log_loss) y usa el ganador para el pronóstico 1/X/2. | Los 3 mejores individuales suelen ser modelos **correlacionados** (p.ej. 3 árboles); un blend diverso (Elo+DC+lineal+árboles+boosting) reduce varianza y mide mejor. Data-driven, no asume cuál gana. |
+| **XGBoost nativo con `y` entero** | El ML entrena con clases 0/1/2 y `XGBClassifier` nativo (sin wrapper). | El wrapper custom fallaba en la versión de XGBoost de Colab (`xgb`→`nan`). Robusto entre versiones. |
 | **Auto-calibración de parámetros** | `nu`/`lambda_prior` se eligen por log-loss out-of-fold (`calibrar_parametros`). | Evita afinar a mano. `K` y `FACTOR_LOCALIA_KO` quedan fijos: no hay señal de validación (K necesita CV cronológica con partidos futuros; la localía KO sólo afecta eliminatorias aún sin jugar). |
 | **Resultados de KO fijados** | Goles cargados en 32avos ⇒ partido fijo; el perdedor queda eliminado en todas las corridas. Rondas posteriores: árbol binario (cuando se carguen). | "Descartar a los eliminados". Validado: derrota de Brasil en 32avos lleva su prob. de campeón de ~6% a 0%. |
 | **Rendimiento del notebook** | Tuning UNA vez (reusado en el OOF), calibración con CV chica en el OOF, grilla de calibración acotada. ~3-3,5 min de punta a punta. | "Ejecutar todo" en Colab en un tiempo razonable sin sacrificar la consistencia metodológica. |
@@ -158,6 +160,10 @@ Excel  ─► data_loader.cargar_datos()        → equipos, fixture, bracket
     out-of-fold de Elo/DC/zoo/ensemble; `devolver_oof=True` → `(tabla, mejor, oof, y)`.
   - `seleccionar_top(tabla, k=3)` — los k mejores modelos base + pesos ∝ 1/log_loss.
   - `blend_1x2(probs, pesos)` — blend ponderado de (p1,pX,p2).
+  - `blend_oof(oof, nombres, pesos)` — matriz (n,3) del blend a partir de las OOF.
+  - `elegir_predictor_final(oof, y, top3, pesos_top)` — **elige el predictor final**
+    comparando por log-loss OOF el blend top-3 vs un **blend diverso** (todos los
+    modelos base ∝ 1/log_loss); devuelve `(tabla, nombres, pesos)` del ganador.
   - `tabla_calibracion(P, y, n_bins=10)` — reliability + ECE de una matriz de probs OOF.
   - `pronostico_partidos(..., modelos_top, pesos_top, nu)` — predice con el blend top-3.
 - `src/viz.py`

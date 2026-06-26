@@ -3,6 +3,18 @@
 Formato: cambios agrupados por fecha. El proyecto entrega **probabilidades**, no
 consejos de apuestas.
 
+## 2026-06-25 — Predictor final = mejor combinación medida
+
+### Mejora
+- **La predicción 1/X/2 ya no asume que el blend de los 3 mejores es lo óptimo.**
+  `elegir_predictor_final` compara por log-loss out-of-fold el **blend top-3** vs un
+  **blend diverso** (todos los modelos base ∝ 1/log-loss) y usa el ganador. Motivo:
+  los 3 mejores individuales suelen ser modelos correlacionados (p.ej. 3 árboles),
+  mientras que el blend diverso (Elo + Dixon-Coles + lineal + árboles + boosting)
+  reduce varianza y mide mejor. Nuevo CSV `outputs/predictores_finales.csv`.
+- Decisión (criterio de experto): **no se agregan redes neuronales**. Con ~56
+  partidos una NN sobreajusta; los gradient boosting ya dominan ese régimen tabular.
+
 ## 2026-06-25 — Robustez de XGBoost, limpieza de salidas y 56 partidos
 
 ### Arreglos

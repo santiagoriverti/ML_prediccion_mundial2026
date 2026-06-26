@@ -404,6 +404,13 @@ def predecir_ml(modelos: dict, fila_features: pd.DataFrame) -> dict:
 # ===========================================================================
 # 4) ENSEMBLE
 # ===========================================================================
+# Pesos por defecto del ensemble: Elo y Dixon-Coles (núcleo robusto/decorrelacionado)
+# pesan más; los ML aportan como complemento. Los modelos ML sin entrada explícita
+# reciben 0.5. Este perfil suele rendir mejor que ponderar todo por igual.
+PESOS_ENSEMBLE = {"elo": 1.0, "dc": 1.5, "logit": 0.7, "rf": 0.5, "gbm": 0.5}
+_PESO_ML_DEFECTO = 0.5
+
+
 def ensemble_1x2(prob_elo, prob_dc, probs_ml: dict | None = None,
                  pesos: dict | None = None) -> tuple[float, float, float]:
     """Promedio ponderado de probabilidades 1/X/2 de los distintos modelos.
@@ -411,7 +418,7 @@ def ensemble_1x2(prob_elo, prob_dc, probs_ml: dict | None = None,
     Pesos por defecto: Elo y Dixon-Coles pesan más (son los robustos con N
     chico); los ML aportan como complemento.
     """
-    pesos = pesos or {"elo": 1.0, "dc": 1.5, "logit": 0.7, "rf": 0.5, "gbm": 0.5}
+    pesos = pesos or PESOS_ENSEMBLE
     acum = np.zeros(3)
     total = 0.0
     for clave, p in [("elo", prob_elo), ("dc", prob_dc)]:
@@ -420,7 +427,7 @@ def ensemble_1x2(prob_elo, prob_dc, probs_ml: dict | None = None,
         total += w
     if probs_ml:
         for nombre, p in probs_ml.items():
-            w = pesos.get(nombre, 0.5)
+            w = pesos.get(nombre, _PESO_ML_DEFECTO)
             acum += w * np.array(p)
             total += w
     acum /= total
@@ -601,6 +608,66 @@ def _oof_elo_dc(df, equipos, nu, lambda_prior, k, random_state):
     ll_dc = log_loss(y, _suavizar(oof_dc), labels=clases)
     ll_avg = log_loss(y, _suavizar((oof_elo + oof_dc) / 2.0), labels=clases)
     return float(min(ll_elo, ll_dc, ll_avg))
+
+
+def blend_oof(oof: dict, nombres, pesos: dict) -> np.ndarray:
+    """Construye la matriz (n,3) del blend ponderado a partir de las predicciones
+    out-of-fold ``oof`` de los modelos en ``nombres`` con ``pesos``."""
+    n = len(next(iter(oof.values())))
+    acum = np.zeros((n, 3))
+    total = 0.0
+    for m in nombres:
+        if m in oof and not np.isnan(oof[m]).any():
+            acum += pesos.get(m, 0.0) * oof[m]
+            total += pesos.get(m, 0.0)
+    if total <= 0:
+        return np.full((n, 3), 1 / 3)
+    P = acum / total
+    return P / P.sum(axis=1, keepdims=True)
+
+
+def elegir_predictor_final(oof, y, top3, pesos_top):
+    """Elige el PREDICTOR FINAL comparando candidatos por log-loss out-of-fold.
+
+    Candidatos (todos expresables como blend ponderado de modelos base):
+      * ``blend_top3``: los 3 mejores individuales (pueden estar correlacionados).
+      * ``blend_diverso``: TODOS los modelos base ponderados ∝ 1/log_loss. Suele
+        ganar porque mezcla familias distintas (Elo + Dixon-Coles + lineal +
+        árboles + boosting): la **diversidad** reduce la varianza del blend.
+
+    Devuelve ``(tabla, nombres, pesos)``: ``tabla`` con el log-loss OOF de cada
+    candidato (incluye el 'ensemble' de pesos fijos como referencia) y la
+    ``(nombres, pesos)`` del predictor ganador para usar en ``pronostico_partidos``.
+    """
+    from sklearn.metrics import log_loss
+    clases = ["1", "X", "2"]
+    y = np.asarray(y)
+    base = [m for m in oof if m != "ensemble" and not np.isnan(oof[m]).any()]
+    if not base:
+        return pd.DataFrame(), top3, pesos_top
+
+    ll_ind = {m: float(log_loss(y, _suavizar(oof[m]), labels=clases)) for m in base}
+    inv = {m: 1.0 / max(ll_ind[m], 1e-6) for m in base}
+    s = sum(inv.values())
+    pesos_div = {m: inv[m] / s for m in base}
+    # Ensemble de pesos fijos (favorece Elo+Dixon-Coles), expresado como blend.
+    pesos_ens = {m: PESOS_ENSEMBLE.get(m, _PESO_ML_DEFECTO) for m in base}
+
+    candidatos = {"blend_top3": (list(top3), dict(pesos_top)),
+                  "blend_diverso": (base, pesos_div),
+                  "ensemble_fijo": (base, pesos_ens)}
+    etiqueta = {"blend_top3": "+".join(top3), "blend_diverso": "todos (1/log-loss)",
+                "ensemble_fijo": "todos (Elo/DC pesan mas)"}
+    filas, mejor, mejor_ll, mejor_spec = [], None, np.inf, None
+    for nombre, (nm, pe) in candidatos.items():
+        P = blend_oof(oof, nm, pe)
+        ll = float(log_loss(y, _suavizar(P), labels=clases))
+        filas.append({"predictor": nombre, "log_loss": round(ll, 4),
+                      "modelos": etiqueta[nombre]})
+        if ll < mejor_ll:
+            mejor_ll, mejor, mejor_spec = ll, nombre, (nm, pe)
+    tabla = pd.DataFrame(filas).sort_values("log_loss").reset_index(drop=True)
+    return tabla, mejor_spec[0], mejor_spec[1]
 
 
 def calibrar_parametros(dataset, equipos, random_state=42,

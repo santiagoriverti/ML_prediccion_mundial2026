@@ -32,9 +32,11 @@ fixture y cuadro final):
    - *ML para 1/X/2* con **auto-tuning** de hiperparámetros y calibración: logit,
      RandomForest, ExtraTrees, GradientBoosting, HistGradientBoosting y, si están
      disponibles, **XGBoost** y **LightGBM**.
-4. **Evalúa y elige los 3 mejores modelos**: compara todos por **validación
-   cruzada out-of-fold** (log-loss, accuracy, Brier) reentrenando en cada fold sin
-   fuga, y usa un **blend ponderado de los 3 mejores** para el pronóstico 1/X/2.
+4. **Evalúa los modelos y elige el predictor final**: compara todos por
+   **validación cruzada out-of-fold** (log-loss, accuracy, Brier) reentrenando en
+   cada fold sin fuga. La predicción 1/X/2 usa la **mejor combinación medida**:
+   compara el blend de los 3 mejores contra un **blend diverso** de todos
+   (ponderado por 1/log-loss) y se queda con el de menor log-loss.
 5. **Simula el torneo** (Monte Carlo, 20.000 corridas, con Dixon-Coles como
    generador de marcadores): completa los partidos no jugados, resuelve los grupos
    con el **desempate oficial FIFA**, asigna los **8 mejores terceros**, arma el
