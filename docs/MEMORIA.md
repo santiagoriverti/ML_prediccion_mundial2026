@@ -5,9 +5,11 @@
 > DT/clasificatoria/top-5; zoo de ML con auto-tuning; auto-calibración de nu/lambda;
 > **predictor final = mejor combinación medida** (`elegir_predictor_final`); XGBoost
 > nativo (clases enteras); fijado de resultados de KO; fórmulas Excel; **camino más
-> probable hasta la final** (`cuadro_completo_probable`, sección 12b); y **fix Colab**
+> probable hasta la final** (`cuadro_completo_probable`, sección 12b); **fix Colab**
 > (la celda de setup hace `git reset --hard origin/main` + purga módulos para traer
-> siempre el código nuevo). Mantené este archivo al día cuando cambien decisiones.
+> siempre el código nuevo); y **figuras de calidad de publicación** (sección 16:
+> `fig_reliability` / `fig_champion` / `fig_pipeline`, PDF+PNG 600 dpi, textos en
+> inglés, auto-descarga en Colab). Mantené este archivo al día al cambiar decisiones.
 >
 > **Ver también [`../CHANGELOG.md`](../CHANGELOG.md)** para el detalle cronológico.
 
@@ -34,8 +36,9 @@ se cargan nuevos resultados en el Excel y se reejecuta el notebook.
 
 - **48 selecciones**, 12 grupos (A–L). Confeds: UEFA 16, CAF 10, AFC 9,
   CONCACAF 6, CONMEBOL 6, OFC 1.
-- **56 de 72 partidos de grupo ya cargados** (fechas 1 y 2 completas de los 12
-  grupos + parte de la fecha 3). El resto se simula.
+- **60 de 72 partidos de grupo ya cargados** (fechas 1 y 2 completas de los 12
+  grupos + parte de la fecha 3). El resto se simula. (Se va actualizando: el conteo
+  sube a medida que se cargan resultados.)
 - **Puntos/Ranking FIFA completos para las 48 (0 imputados; antes 11).** Se cargaron
   los reales del ranking 19-nov-2025 (ver §5 y §8 para el método).
 - **Valor de plantel** (Transfermarkt jun-2026) y **edad promedio del plantel**
@@ -81,12 +84,14 @@ se cargan nuevos resultados en el Excel y se reejecuta el notebook.
 - Pipeline probado de punta a punta. Notebook ejecutado headless **sin errores**
   con el Excel enriquecido (raw URL). End-to-end ~3-3,5 min (auto-tuning + OOF +
   20.000 corridas Monte Carlo).
-- Pronóstico actual (top campeón, **56 resultados**, predictor final elegido por
-  log-loss OOF, localía KO 0.3): **Argentina ~7,1 % · EE.UU. ~6,9 % · Francia ~6,5 % ·
-  México ~6,0 % · España ~5,7 % · Brasil ~5,3 %** … (suma = 1,0). Con 56 partidos el
-  predictor final ganador es el **ensemble fijo** (Elo/DC con más peso; log-loss OOF
-  0,934, ECE ≈ 0,08); se recalcula en cada corrida. El top-3 individual (informativo)
-  hoy es gbm/rf/extra.
+- Pronóstico actual (top campeón, **60 resultados**, predictor final elegido por
+  log-loss OOF, localía KO 0.3): **Argentina ~7,0 % · Francia ~6,6 % · España ~6,0 % ·
+  México ~5,9 % · EE.UU. ~5,5 % · Portugal ~5,2 % · Brasil ~5,1 %** … (suma = 1,0).
+  Con 60 partidos el predictor final ganador es el **blend de los 3 mejores**
+  (logit+elo+rf; log-loss OOF 0,944, ECE ≈ 0,042); `nu`=0,26, `lambda_prior`=16.
+  **Importante:** el predictor final es **data-driven y cambia con los datos** — a
+  veces gana el ensemble fijo (Elo/DC pesan más), a veces el blend top-3; no asumir
+  uno fijo. Se recalcula en cada corrida.
 - **(jun-2026) XGBoost robusto entre versiones**: el ML ahora entrena con clases
   ENTERAS (0/1/2) y usa el `XGBClassifier` nativo (antes un wrapper fallaba en la
   versión de XGBoost de Colab → `xgb` daba `nan`). Ver §5.

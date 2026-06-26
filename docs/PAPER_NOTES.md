@@ -97,7 +97,10 @@
 
 ## 7. Datos vigentes para reportar (actualizar al cerrar)
 
-- 48 selecciones; 72 partidos de grupo (58 cargados al momento de escribir).
-- Predictor final: ensemble (Elo/DC con más peso). Log-loss OOF ≈ 0,93; ECE ≈ 0,05–0,08.
-- Top campeón: Argentina ≈ 6,8 % · EE.UU. ≈ 6,7 % · México ≈ 6,4 % · Francia ≈ 6,3 % …
+- 48 selecciones; 72 partidos de grupo (60 cargados al momento de escribir).
+- Predictor final (data-driven, cambia con los datos): con 60 partidos gana el blend
+  de los 3 mejores (logit+elo+rf). Log-loss OOF ≈ 0,94; ECE ≈ 0,04. `nu`=0,26,
+  `lambda_prior`=16.
+- Top campeón: Argentina ≈ 7,0 % · Francia ≈ 6,6 % · España ≈ 6,0 % · México ≈ 5,9 % ·
+  EE.UU. ≈ 5,5 % · Portugal ≈ 5,2 % · Brasil ≈ 5,1 % …
 - (Recalcular y fijar las cifras finales cuando se cierre el dataset del paper.)
