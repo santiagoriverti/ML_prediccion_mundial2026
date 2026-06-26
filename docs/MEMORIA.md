@@ -1,9 +1,15 @@
 # MEMORIA DEL PROYECTO — ML_prediccion_mundial2026
 
 > Documento maestro para **retomar el proyecto desde cualquier sesión**.
-> Última actualización: **2026-06-25** (variables curadas DT/clasificatoria/top-5,
-> zoo de ML con auto-tuning + blend top-3, auto-calibración, fijado de KO, fórmulas
-> Excel). Mantené este archivo al día cuando cambien decisiones o parámetros.
+> Última actualización: **2026-06-25**. Cambios recientes: variables curadas
+> DT/clasificatoria/top-5; zoo de ML con auto-tuning; auto-calibración de nu/lambda;
+> **predictor final = mejor combinación medida** (`elegir_predictor_final`); XGBoost
+> nativo (clases enteras); fijado de resultados de KO; fórmulas Excel; **camino más
+> probable hasta la final** (`cuadro_completo_probable`, sección 12b); y **fix Colab**
+> (la celda de setup hace `git reset --hard origin/main` + purga módulos para traer
+> siempre el código nuevo). Mantené este archivo al día cuando cambien decisiones.
+>
+> **Ver también [`../CHANGELOG.md`](../CHANGELOG.md)** para el detalle cronológico.
 
 Documentos complementarios:
 - [`DICCIONARIO_EXCEL.md`](DICCIONARIO_EXCEL.md) — cómo es el Excel real, hoja por
@@ -58,16 +64,18 @@ se cargan nuevos resultados en el Excel y se reejecuta el notebook.
   completo los resuelve Python (fuente de verdad).
 - **Localía moderada en eliminatorias** (`FACTOR_LOCALIA_KO=0.3`): los anfitriones
   suben moderado sin desbordar (ver §5).
-- **Evaluación y selección de modelos**: `evaluar_modelos` compara Elo, Dixon-Coles,
-  logit, RF, GBM y ensemble por validación cruzada out-of-fold; el notebook usa el
-  mejor para el pronóstico 1/X/2. Hoy gana el **ensemble** (log-loss 0,911,
-  accuracy 0,667). La simulación usa Dixon-Coles como generador de marcadores.
+- **Evaluación y elección del predictor final**: `evaluar_modelos` compara TODOS los
+  modelos (Elo, Dixon-Coles y el zoo de ML) por validación cruzada out-of-fold
+  (log-loss / accuracy / Brier). Luego `elegir_predictor_final` compara, también por
+  log-loss OOF, tres combinaciones —blend de los 3 mejores, blend diverso (todos ∝
+  1/log-loss) y ensemble fijo (Elo/DC con más peso)— y el notebook predice con la
+  ganadora. La simulación usa Dixon-Coles como generador de marcadores.
 - **Calibración (backtesting)**: `tabla_calibracion` mide si las probabilidades son
   confiables (reliability one-vs-rest + ECE) reusando las predicciones out-of-fold.
-  Hallazgo jun-2026: el **ensemble está subconfiado** (ECE 0,093: comprime las probs
-  hacia 1/3 y predice ~0,5 donde se observa ~0,7); **Elo (0,057) y Dixon-Coles (0,059)
-  están mejor calibrados**, aunque el ensemble gana en log-loss. Diagnóstico, no cambia
-  el pronóstico. Gráfico: `outputs/calibracion.png`.
+  Se reporta el ECE por modelo y el del predictor final. Con 56 partidos el predictor
+  final (ensemble fijo) tiene ECE ≈ 0,08; los mejor calibrados individuales son
+  `hist`/`dc`/`rf` (ECE ≈ 0,01–0,05). Diagnóstico, no cambia el pronóstico.
+  Gráfico: `outputs/calibracion.png`.
 - **Eliminatorias**: `Equipo 1`/`Equipo 2` muestran el escenario más probable con
   nombres de selección; los slots de posición se preservan en `Slot 1`/`Slot 2`.
 - Pipeline probado de punta a punta. Notebook ejecutado headless **sin errores**
@@ -92,22 +100,31 @@ se cargan nuevos resultados en el Excel y se reejecuta el notebook.
      y/o en **Eliminatorias** (*Goles 1* / *Goles 2*).
    - Regla: **ambos goles cargados ⇒ partido jugado (hecho fijo)**; vacíos ⇒ se simula.
    - Commiteá y pusheá el Excel (la `raw URL` del notebook toma el último commit).
-   - Reejecutá el notebook en Colab (*Entorno de ejecución ▸ Ejecutar todo*).
+   - Reejecutá el notebook en Colab (*Entorno de ejecución ▸ Ejecutar todo*). La
+     celda 1 hace `git reset --hard origin/main` + purga de módulos, así que SIEMPRE
+     corre con el último commit (aunque reuses la sesión). Si querés máxima limpieza:
+     *Entorno de ejecución ▸ Reiniciar y ejecutar todo*.
 3. Para **tocar el código**: trabajá en `src/`, probá local con el snippet de la
    sección 7, y commiteá.
 
 ## 4. Flujo del pipeline (orden de ejecución)
 
 ```
-Excel  ─► data_loader.cargar_datos()        → equipos, fixture, bracket
-       ─► features.imputar_rating_base()     → rating_base (de Puntos FIFA + imputación)
-       ─► simulate.actualizar_elo()          → mueve rating con los resultados cargados
+Excel  ─► data_loader.cargar_datos()         → equipos, fixture, bracket
+       ─► features.imputar_rating_base()      → rating_base (de Puntos FIFA + imputación)
+       ─► simulate.actualizar_elo()           → mueve rating con los resultados cargados
        ─► features.construir_dataset_partidos() → X/y por partido (ΔA-B, target 1/X/2)
-       ─► models.DixonColes().entrenar()     → ataque/defensa por equipo (prior Elo)
-       ─► models.entrenar_modelos_ml()       → logit / RF / GBM (complementarios)
-       ─► models.pronostico_partidos()       → tabla P(1/X/2) + goles + marcador
-       ─► simulate.simular_torneo(n=20000)   → prob campeón / avance / grupos
-       ─► viz.*                              → gráficos en outputs/
+       ─► models.calibrar_parametros()        → nu (Elo) y lambda_prior (DC) por log-loss OOF
+       ─► models.DixonColes(lambda).entrenar() → ataque/defensa por equipo (prior Elo)
+       ─► models.entrenar_modelos_ml(tune=True) → zoo ML (auto-tuning + calibración)
+       ─► models.evaluar_modelos(devolver_oof) → CV out-of-fold de todos los modelos
+       ─► models.seleccionar_top + elegir_predictor_final → predictor 1/X/2 ganador
+       ─► models.tabla_calibracion()          → reliability + ECE (diagnóstico)
+       ─► models.pronostico_partidos(pred.fin) → tabla P(1/X/2) + goles + marcador
+       ─► simulate.simular_torneo(n=20000)    → prob campeón / avance / grupos
+       ─► simulate.bracket_mas_probable()     → cuadro de 32avos (nombres)
+       ─► simulate.cuadro_completo_probable() → camino más probable 32avos→Final
+       ─► viz.*                               → gráficos en outputs/
 ```
 
 ## 5. Decisiones de modelado importantes (y por qué)
@@ -120,7 +137,7 @@ Excel  ─► data_loader.cargar_datos()        → equipos, fixture, bracket
 | **Regularización fuerte Dixon-Coles** | `lambda_prior=8.0` (prior L2 hacia ataque/defensa derivados del rating). | Con ~1 partido por equipo, sin esto un 7-1 (Alemania) o un 0-0 (España vs Cabo Verde) distorsionaba todo. |
 | **Cotas en la MLE** | gamma∈[0, 0.28], rho∈[−0.15, 0.15], intercept∈[log 0.4, log 2.2]. | Evita que la verosimilitud se desboque con muestra chica. |
 | **Localía: plena en grupos, MODERADA en eliminatorias** | Anfitriones (MEX/USA/CAN) reciben ventaja **plena** en grupos y una **fracción** (`FACTOR_LOCALIA_KO=0.3`) en cada partido de eliminatoria, por jugar en Norteamérica. | Localía plena en las 7 rondas inflaba a los anfitriones (~53 % combinado); neutral total ignoraba un efecto real. Con **0.3** suman ~18 % y Argentina sigue 1ª (elegido); con 0.5 ~21 % y USA pasa a favorito. Tuneable. El cuadro post-32avos es aproximado, así que es un efecto agregado, no estadio por estadio. |
-| **Evaluar y elegir el mejor modelo** | `evaluar_modelos` compara Elo/Dixon-Coles/logit/RF/GBM/ensemble por CV out-of-fold (reentrena DC y ML por fold); el notebook usa el mejor (hoy ensemble) para el 1/X/2. La simulación usa Dixon-Coles (único que genera marcadores). | Antes el ensemble tenía pesos fijos sin evaluar; ahora la elección es data-driven y auditable. |
+| **Evaluar modelos por CV out-of-fold** | `evaluar_modelos` compara Elo/Dixon-Coles/todo el zoo de ML/ensemble por CV out-of-fold (reentrena DC y ML por fold, sin fuga). La elección del predictor 1/X/2 la hace `elegir_predictor_final` (ver fila más abajo). La simulación usa Dixon-Coles (único que genera marcadores). | Elección de modelo data-driven y auditable, sin afinar a mano. |
 | **Desempate de grupos = FIFA oficial** | Puntos → DG global → GF global → **head-to-head** entre empatados (pts, DG, GF) → fair-play/sorteo (azar). | El enunciado decía "head-to-head primero", pero la regla **oficial FIFA** aplica primero los criterios globales y recién después el H2H. Se implementó la oficial real. |
 | **8 mejores terceros** | Ranking por (pts, DG, GF) y asignación a los slots `3º X/Y/Z` del bracket por **matching bipartito** respetando la elegibilidad de cada slot. | Reproduce la regla FIFA usando los cruces que ya trae la hoja `Eliminatorias`. |
 | **Cuadro post-32avos** | Sólo los 32avos están definidos en el Excel; las rondas siguientes se arman como **árbol binario** en el orden listado. | La hoja deja en blanco 16avos→Final. Es adaptable si se completan esos slots. |
@@ -155,7 +172,8 @@ Excel  ─► data_loader.cargar_datos()        → equipos, fixture, bracket
     sección 12b del notebook. Es un escenario partido a partido, no la prob. campeón.
 - `src/models.py`
   - `_zoo_modelos(rs)` — define el zoo (sklearn + XGBoost/LightGBM opcionales) con su
-    espacio de búsqueda. `XGBClasifStr` envuelve XGBoost para clases string 1/X/2.
+    espacio de búsqueda. El ML entrena con clases ENTERAS (0/1/2, mapeo `_MAP_CLASE`)
+    para usar `XGBClassifier` nativo sin wrapper; `predecir_ml` mapea de vuelta a 1/X/2.
   - `entrenar_modelos_ml(ds, tune=True, hiperparams=None, calibrar=True, ...)` —
     auto-tuning (`RandomizedSearchCV`) + calibración sigmoide. `tune=False`+`hiperparams`
     reusa hiperparámetros (lo usa el OOF). `calib_cv` abarata la calibración en el OOF.
@@ -170,7 +188,10 @@ Excel  ─► data_loader.cargar_datos()        → equipos, fixture, bracket
     comparando por log-loss OOF el blend top-3 vs un **blend diverso** (todos los
     modelos base ∝ 1/log_loss); devuelve `(tabla, nombres, pesos)` del ganador.
   - `tabla_calibracion(P, y, n_bins=10)` — reliability + ECE de una matriz de probs OOF.
-  - `pronostico_partidos(..., modelos_top, pesos_top, nu)` — predice con el blend top-3.
+  - `pronostico_partidos(..., modelos_top, pesos_top, nu)` — predice con el predictor
+    final elegido (los `(nombres, pesos)` que devuelve `elegir_predictor_final`).
+  - Mapeo de clases: `CLASES_1X2`, `_MAP_CLASE` (1/X/2→0/1/2), `_INV_CLASE`;
+    `PESOS_ENSEMBLE` (pesos del ensemble fijo, Elo/DC pesan más).
 - `src/viz.py`
   - `grafico_calibracion(tabla_calib, ece, modelo)` — reliability diagram a `outputs/`.
 - `scripts/enriquecer_excel.py` — re-genera el Excel con los datos curados (DTs,
@@ -231,8 +252,9 @@ print(res["campeon"].head(12))
 
 ## 9. Pendientes / mejoras posibles
 
-- Cargar el resto de la fecha 3 de grupos (faltan 18 partidos) a medida que se jueguen.
-- Completar la hoja **`Eliminatorias`** con resultados de la fase final cuando empiece.
+- Cargar el resto de la fecha 3 de grupos (faltan 16 partidos) a medida que se jueguen.
+- Completar la hoja **`Eliminatorias`** (*Goles 1*/*Goles 2*) con los resultados de la
+  fase final cuando empiece: los equipos eliminados se descartan solos (KO fijado).
 - (Hecho jun-2026) Cargados **Puntos/Ranking FIFA** de las 11 selecciones que faltaban
   → **0 imputados**. Mejoró el log-loss CV (logit 1.004→0.922, gbm 1.344→1.207) y
   recalibró la fuerza de esos equipos y sus rivales. Los puntos son estimados del rank.

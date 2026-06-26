@@ -1,9 +1,10 @@
 # ML_prediccion_mundial2026
 
 Predicción de resultados y del **campeón del Mundial 2026** combinando
-econometría (Elo + Dixon-Coles/Poisson) y Machine Learning (logit multinomial,
-RandomForest, GradientBoosting), con una **simulación Monte Carlo** del torneo
-completo. El pronóstico se **recalcula solo** cada vez que se cargan nuevos
+econometría (Elo + Dixon-Coles/Poisson) y un **zoo de modelos de Machine Learning**
+con auto-tuning (logit, RandomForest, ExtraTrees, GradientBoosting,
+HistGradientBoosting + XGBoost/LightGBM), con una **simulación Monte Carlo** del
+torneo completo. El pronóstico se **recalcula solo** cada vez que se cargan nuevos
 resultados en el Excel insumo y se reejecuta el notebook.
 
 [![Open in Colab](https://colab.research.google.com/assets/colab-badge.svg)](https://colab.research.google.com/github/santiagoriverti/ML_prediccion_mundial2026/blob/main/notebooks/prediccion_mundial2026.ipynb)
@@ -46,9 +47,10 @@ fixture y cuadro final):
 
 ## Salidas
 
-- Tabla por partido pendiente: `P(1/X/2)` (del mejor modelo), goles esperados y
-  marcador más probable.
-- **Comparación de modelos** (log-loss / accuracy / Brier) y el modelo elegido.
+- Tabla por partido pendiente: `P(1/X/2)` (del predictor final elegido), goles
+  esperados y marcador más probable.
+- **Comparación de modelos** (log-loss / accuracy / Brier) y comparación de
+  predictores finales (blend top-3 vs blend diverso vs ensemble), con el elegido.
 - **Calibración (backtesting)**: reliability diagram + ECE por modelo (¿las
   probabilidades son confiables?), con las mismas predicciones out-of-fold.
 - **Ranking de probabilidad de ser campeón** por selección.
@@ -65,9 +67,10 @@ fixture y cuadro final):
 
 ### En Colab (recomendado)
 Hacé clic en el badge **Open in Colab** de arriba y luego
-`Entorno de ejecución ▸ Ejecutar todo`. El notebook clona el repo, instala las
-dependencias, carga el Excel desde la *raw URL* (siempre el último commit) y
-corre todo.
+`Entorno de ejecución ▸ Ejecutar todo`. El notebook clona/actualiza el repo
+(`git reset --hard origin/main`, así siempre corre con el último commit aunque
+reuses la sesión), instala las dependencias, carga el Excel desde la *raw URL* y
+corre todo (~4-6 min: auto-tuning + Monte Carlo).
 
 ### En local
 ```bash
@@ -104,7 +107,7 @@ ML_prediccion_mundial2026/
 ├── src/
 │   ├── data_loader.py                 # lectura/limpieza del Excel
 │   ├── features.py                    # rating base + dataset por partido (13 features)
-│   ├── models.py                      # Elo, Dixon-Coles, zoo de ML, auto-tuning, blend top-3
+│   ├── models.py                      # Elo, Dixon-Coles, zoo de ML, auto-tuning, predictor final
 │   ├── simulate.py                    # actualización Elo + Monte Carlo (con KO fijado)
 │   └── viz.py                         # gráficos (incluye reliability/calibración)
 ├── scripts/
@@ -123,15 +126,27 @@ resultados) y [`docs/ARQUITECTURA.md`](docs/ARQUITECTURA.md) (referencia del có
 
 - El Excel real **no trae columna Elo**; el rating base se deriva de los Puntos
   FIFA (sistema tipo Elo) e imputa los faltantes por confederación.
-- Con pocos partidos jugados, el **núcleo es Elo + Dixon-Coles**; los modelos ML
-  son secundarios (se avisa en el notebook).
+- Con pocos partidos jugados, el **núcleo robusto es Elo + Dixon-Coles**; los
+  modelos ML entran como complemento y la elección del predictor final es
+  data-driven (por log-loss out-of-fold). Por eso el predictor final suele ser el
+  ensemble que pondera más a Elo/DC, no un solo modelo de ML.
+- **Predicción final:** no se asume cuál combinación es mejor; se mide por log-loss
+  out-of-fold (blend top-3 vs blend diverso vs ensemble) y se usa la ganadora.
 - **Desempate de grupos:** se implementa el orden oficial FIFA (puntos → DG
   global → GF global → *head-to-head* entre empatados → fair-play/sorteo).
-- **Localía:** los anfitriones (México, EE.UU., Canadá) reciben ventaja en la
-  fase de grupos; las eliminatorias se tratan como **sede neutral** (el cuadro
-  reparte partidos entre los tres países y no hay localía garantizada).
+- **Localía:** los anfitriones (México, EE.UU., Canadá) reciben ventaja **plena**
+  en la fase de grupos y una **fracción moderada** en las eliminatorias
+  (`FACTOR_LOCALIA_KO=0.3`), por jugar en Norteamérica (no es sede neutral ni
+  ventaja plena; es tuneable — ver `docs/MEMORIA.md` §5).
+- **No se usan redes neuronales a propósito:** con ~56 partidos sobreajustarían;
+  los gradient boosting ya cubren el régimen tabular chico.
 
 ## Dependencias
 
 `pandas`, `numpy`, `openpyxl`, `scikit-learn`, `scipy`, `statsmodels`,
-`matplotlib` (ver `requirements.txt`).
+`matplotlib`, y opcionalmente `xgboost`/`lightgbm` (el zoo los usa si están y
+degrada con elegancia si no). Ver `requirements.txt`.
+
+## Historial de cambios
+
+Ver [`CHANGELOG.md`](CHANGELOG.md) para el detalle cronológico de mejoras y arreglos.
