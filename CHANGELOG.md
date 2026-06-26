@@ -3,6 +3,15 @@
 Formato: cambios agrupados por fecha. El proyecto entrega **probabilidades**, no
 consejos de apuestas.
 
+## 2026-06-25 — Figuras de publicación en inglés
+
+### Ajuste
+- `fig_champion`: nombres de selección **en inglés** (mapeo ES→EN tolerante a
+  acentos; p.ej. México→Mexico, España→Spain, Países Bajos→Netherlands).
+- `fig_pipeline`: **todos los textos en inglés** y la caja de salidas ("Outputs:
+  per-match 1/X/2 probabilities; advancement / title probabilities") **agrandada**
+  (más ancha y a dos líneas).
+
 ## 2026-06-25 — Figuras de calidad de publicación
 
 ### Nueva salida
