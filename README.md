@@ -62,6 +62,10 @@ fixture y cuadro final):
   ese escenario (`outputs/cuadro_completo.csv`). Es un escenario partido a partido,
   no la probabilidad de campeón (esa la da el Monte Carlo).
 - Gráficos (barras de campeón, heatmap de avance) y CSVs en `outputs/`.
+- **Figuras de calidad de publicación** en `outputs/figuras/` (PDF vectorial + PNG
+  600 dpi, fuente serif, sin títulos): `fig_reliability` (calibración del predictor
+  final), `fig_champion` (prob. de campeón top-15) y `fig_pipeline` (arquitectura).
+  En Colab se **descargan automáticamente**.
 
 ## Cómo ejecutarlo
 

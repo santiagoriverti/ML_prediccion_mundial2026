@@ -2,6 +2,7 @@
 outputs/*.png
 outputs/*.csv
 outputs/*.html
+outputs/figuras/
 !outputs/.gitkeep
 
 # --- Secretos / credenciales (NUNCA versionar tokens) ---

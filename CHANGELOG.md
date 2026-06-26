@@ -3,6 +3,19 @@
 Formato: cambios agrupados por fecha. El proyecto entrega **probabilidades**, no
 consejos de apuestas.
 
+## 2026-06-25 — Figuras de calidad de publicación
+
+### Nueva salida
+- Sección 16 del notebook: genera tres figuras listas para revista en
+  `outputs/figuras/` (**PDF vectorial + PNG 600 dpi**, `bbox_inches='tight'`, fuente
+  serif ≥ 9 pt, sin títulos —los captions van en LaTeX): `fig_reliability`
+  (reliability diagram + ECE del predictor final, ejes "Mean predicted probability" /
+  "Empirical frequency"), `fig_champion` (barras horizontales de prob. de campeón
+  top-15) y `fig_pipeline` (diagrama esquemático de la arquitectura). En **Colab se
+  descargan automáticamente** (6 archivos). Reutiliza los objetos ya calculados
+  (`tabla_calib`, `ece`, `nombres_fin`, `resultados['campeon']`) con fallback a los
+  CSV de `outputs/`. No modifica nada de lo existente (celdas nuevas al final).
+
 ## 2026-06-25 — Fix Colab: traer siempre la última versión del repo
 
 ### Arreglo

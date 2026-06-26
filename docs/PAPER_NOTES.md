@@ -61,9 +61,9 @@
 | Tabla 4 | Resultados | Comparación de predictores finales (blend top-3 vs diverso vs ensemble) | `predictores_finales.csv` |
 | Tabla 5 | Resultados | Calibración por modelo (ECE) | `calibracion_ece.csv` |
 | Tabla 6 | Resultados | Top probabilidades de campeón y de alcanzar cada ronda | `prob_campeon.csv`, `prob_avance.csv` |
-| Fig. 1 | Diagrama | Arquitectura del pipeline (Excel→features→modelos→simulación) | (hacer) ver flujo en `MEMORIA.md` §4 |
-| Fig. 2 | Calibración | Reliability diagram del predictor final + ECE | `calibracion.png` / `calibracion_reliability.csv` |
-| Fig. 3 | Resultados | Barras de probabilidad de campeón (top-15) | `prob_campeon.png` |
+| Fig. 1 | Diagrama | Arquitectura del pipeline (Excel→features→modelos→simulación) | **`outputs/figuras/fig_pipeline.pdf`** (auto) |
+| Fig. 2 | Calibración | Reliability diagram del predictor final + ECE | **`outputs/figuras/fig_reliability.pdf`** (auto) |
+| Fig. 3 | Resultados | Barras de probabilidad de campeón (top-15) | **`outputs/figuras/fig_champion.pdf`** (auto) |
 | Fig. 4 | Resultados | Heatmap de probabilidad de alcanzar cada ronda | `heatmap_avance.png` |
 | Fig. 5 | Resultados | Cuadro / camino más probable hasta la final | `cuadro_completo.csv` (hacer figura de bracket) |
 

@@ -90,6 +90,11 @@ se cargan nuevos resultados en el Excel y se reejecuta el notebook.
 - **(jun-2026) XGBoost robusto entre versiones**: el ML ahora entrena con clases
   ENTERAS (0/1/2) y usa el `XGBClassifier` nativo (antes un wrapper fallaba en la
   versión de XGBoost de Colab → `xgb` daba `nan`). Ver §5.
+- **(jun-2026) Figuras de calidad de publicación** (sección 16 del notebook): genera
+  `outputs/figuras/fig_reliability`, `fig_champion` y `fig_pipeline` en **PDF
+  vectorial + PNG 600 dpi** (serif, sin títulos), y en Colab las **descarga
+  automáticamente**. Reutiliza objetos ya calculados con fallback a los CSV. Para el
+  paper ver `docs/PAPER_NOTES.md`.
 
 ## 3. Cómo retomar mañana (pasos)
 
