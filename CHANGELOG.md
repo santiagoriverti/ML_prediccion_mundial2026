@@ -3,6 +3,16 @@
 Formato: cambios agrupados por fecha. El proyecto entrega **probabilidades**, no
 consejos de apuestas.
 
+## 2026-06-25 — Fix Colab: traer siempre la última versión del repo
+
+### Arreglo
+- **`ImportError` en Colab** al reusar la sesión: la celda de setup solo clonaba el
+  repo "si no existía", así que una sesión con el repo ya clonado quedaba con código
+  viejo (p.ej. faltaba `elegir_predictor_final`). Ahora la celda hace
+  `git fetch + reset --hard origin/main` cuando el repo ya está, y **purga los
+  módulos del proyecto de `sys.modules`** para forzar el reimport del código fresco.
+  Funciona aunque se reejecute sin reiniciar el entorno.
+
 ## 2026-06-25 — Camino más probable hasta la final
 
 ### Nueva salida
