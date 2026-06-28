@@ -50,8 +50,10 @@ se cargan nuevos resultados en el Excel y se reejecuta el notebook.
   **tabla OFICIAL FIFA** (`src/tabla_terceros.py`, Anexo C, 495 combinaciones). El
   bracket coincide con el real (combinación `BDEFIJKL` = la del torneo). Se corrigieron
   los 7 nombres de tercero literales mal en el Excel (la asignación 1º/2º era fórmula
-  y estaba bien). **Nota:** grupo G en el Excel = NZ 2º / Egipto 4º (pts 4 vs 2); si un
-  bracket externo difiere es por resultados de grupo distintos (dato, no código).
+  y estaba bien). **Grupo G corregido (28-jun)**: se había cargado mal Egipto-NZ; ahora
+  Egipto 3-1 NZ → grupo G = Bélgica 1º / **Egipto 2º** / Irán 3º / NZ 4º, y el Match 14
+  = **Australia vs Egipto** (coincide con el bracket oficial). Los 8 terceros no cambian
+  (3ºG = Irán, no clasifica).
 - **(jun-2026) Probabilidades por ronda de eliminatorias** (sección 12c del notebook):
   `probabilidades_eliminatorias` imprime los partidos de la próxima ronda pendiente con
   **P(gana 1)/P(empate)/P(gana 2)** (Dixon-Coles, 90') y avanza solo a 16avos→Cuartos→
@@ -102,11 +104,11 @@ se cargan nuevos resultados en el Excel y se reejecuta el notebook.
 - Pipeline probado de punta a punta. Notebook ejecutado headless **sin errores**
   con el Excel enriquecido (raw URL). End-to-end ~3-3,5 min (auto-tuning + OOF +
   20.000 corridas Monte Carlo).
-- Pronóstico actual (top campeón, **60 resultados**, predictor final elegido por
-  log-loss OOF, localía KO 0.3): **Argentina ~7,0 % · Francia ~6,6 % · España ~6,0 % ·
-  México ~5,9 % · EE.UU. ~5,5 % · Portugal ~5,2 % · Brasil ~5,1 %** … (suma = 1,0).
-  Con 60 partidos el predictor final ganador es el **blend de los 3 mejores**
-  (logit+elo+rf; log-loss OOF 0,944, ECE ≈ 0,042); `nu`=0,26, `lambda_prior`=16.
+- Pronóstico actual (top campeón, **72 resultados = grupos completos**, predictor final
+  elegido por log-loss OOF, localía KO 0.3): **Argentina ~12,0 % · Francia ~11,9 % ·
+  España ~8,0 % · México ~6,6 % · Brasil ~6,4 % · Alemania ~5,9 %** … (suma = 1,0).
+  Con los grupos completos el predictor final ganador es el **blend de los 3 mejores**
+  (elo+rf+xgb; log-loss OOF 0,887, ECE ≈ 0,052); `nu`=0,26, `lambda_prior`=4.
   **Importante:** el predictor final es **data-driven y cambia con los datos** — a
   veces gana el ensemble fijo (Elo/DC pesan más), a veces el blend top-3; no asumir
   uno fijo. Se recalcula en cada corrida.

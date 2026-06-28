@@ -3,6 +3,19 @@
 Formato: cambios agrupados por fecha. El proyecto entrega **probabilidades**, no
 consejos de apuestas.
 
+## 2026-06-28 — Corrección de datos del grupo G + docs al día
+
+### Datos
+- Grupo G: estaba mal cargado el Egipto-Nueva Zelanda; corregido a **Egipto 3-1 NZ**
+  → grupo G = Bélgica 1º / **Egipto 2º** / Irán 3º / NZ 4º. El **Match 14** de 32avos
+  pasa a **Australia vs Egipto**, alineado con el bracket oficial. Los 8 terceros no
+  cambian (3ºG = Irán, no clasifica).
+
+### Documentación
+- README, `docs/MEMORIA.md` y `docs/ARQUITECTURA.md` actualizados: tabla oficial de
+  terceros (`src/tabla_terceros.py`), `probabilidades_eliminatorias` (sección 12c),
+  `cargar_resultados_ko`, grupos completos (72/72) y pronóstico vigente.
+
 ## 2026-06-28 — Tabla OFICIAL de terceros + probabilidades por ronda de KO
 
 ### Arreglo (bug de combinación de 32avos)

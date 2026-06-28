@@ -40,10 +40,11 @@ fixture y cuadro final):
    (ponderado por 1/log-loss) y se queda con el de menor log-loss.
 5. **Simula el torneo** (Monte Carlo, 20.000 corridas, con Dixon-Coles como
    generador de marcadores): completa los partidos no jugados, resuelve los grupos
-   con el **desempate oficial FIFA**, asigna los **8 mejores terceros**, arma el
-   bracket y juega hasta la final, con **localía moderada para los anfitriones**.
-   Los partidos jugados (grupos **y eliminatorias**) quedan **fijos**: los equipos
-   eliminados se descartan automáticamente de los candidatos a campeón.
+   con el **desempate oficial FIFA**, asigna los **8 mejores terceros usando la
+   tabla OFICIAL FIFA** (Anexo C del reglamento, 495 combinaciones — ver
+   `src/tabla_terceros.py`), arma el bracket y juega hasta la final, con **localía
+   moderada para los anfitriones**. Los partidos jugados (grupos **y eliminatorias**)
+   quedan **fijos**: los equipos eliminados se descartan automáticamente.
 
 ## Salidas
 
@@ -57,6 +58,10 @@ fixture y cuadro final):
 - Probabilidad de **alcanzar cada ronda** (32avos → final) y de **ganar/clasificar**
   por grupo.
 - **Cuadro de eliminatorias del escenario más probable** (con nombres de selección).
+- **Probabilidades de los próximos partidos de eliminatorias** (sección 12c): para la
+  **próxima ronda pendiente** muestra `P(gana 1) / P(empate) / P(gana 2)` de cada cruce
+  (Dixon-Coles). A medida que se cargan resultados de KO, **avanza sola**: 32avos →
+  16avos → Cuartos → Semifinales → Final (las rondas jugadas se listan con su marcador).
 - **Camino más probable hasta la final**: ronda por ronda (32avos → Final), quién
   enfrenta a quién, el marcador decisivo más probable, quién avanza y el campeón de
   ese escenario (`outputs/cuadro_completo.csv`). Es un escenario partido a partido,
@@ -109,10 +114,11 @@ ML_prediccion_mundial2026/
 │   ├── DICCIONARIO_EXCEL.md           # hojas del Excel + cómo cargar resultados
 │   └── ARQUITECTURA.md                # referencia de módulos y funciones
 ├── src/
-│   ├── data_loader.py                 # lectura/limpieza del Excel
+│   ├── data_loader.py                 # lectura/limpieza del Excel (+ resultados KO de todas las rondas)
 │   ├── features.py                    # rating base + dataset por partido (13 features)
 │   ├── models.py                      # Elo, Dixon-Coles, zoo de ML, auto-tuning, predictor final
-│   ├── simulate.py                    # actualización Elo + Monte Carlo (con KO fijado)
+│   ├── simulate.py                    # actualización Elo + Monte Carlo + probabilidades por ronda KO
+│   ├── tabla_terceros.py              # tabla OFICIAL FIFA de terceros (Anexo C, 495 combinaciones)
 │   └── viz.py                         # gráficos (incluye reliability/calibración)
 ├── scripts/
 │   └── enriquecer_excel.py            # re-genera el Excel: datos curados + fórmulas
@@ -138,6 +144,9 @@ resultados) y [`docs/ARQUITECTURA.md`](docs/ARQUITECTURA.md) (referencia del có
   out-of-fold (blend top-3 vs blend diverso vs ensemble) y se usa la ganadora.
 - **Desempate de grupos:** se implementa el orden oficial FIFA (puntos → DG
   global → GF global → *head-to-head* entre empatados → fair-play/sorteo).
+- **Asignación de terceros:** los 8 mejores terceros se cruzan con los ganadores de
+  grupo según la **tabla oficial FIFA** (495 combinaciones del Anexo C), no con un
+  matching aproximado. Así los 32avos se combinan exactamente como el bracket real.
 - **Localía:** los anfitriones (México, EE.UU., Canadá) reciben ventaja **plena**
   en la fase de grupos y una **fracción moderada** en las eliminatorias
   (`FACTOR_LOCALIA_KO=0.3`), por jugar en Norteamérica (no es sede neutral ni

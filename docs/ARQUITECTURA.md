@@ -10,7 +10,8 @@ src/
 ├── data_loader.py   # lectura/limpieza del Excel → equipos, fixture, bracket
 ├── features.py      # rating base (Puntos FIFA) + dataset por partido (13 features)
 ├── models.py        # Elo, Dixon-Coles, zoo de ML (auto-tuning), predictor final
-├── simulate.py      # actualización Elo + Monte Carlo + cuadro/camino más probable
+├── simulate.py      # actualización Elo + Monte Carlo + cuadro/camino + probs por ronda KO
+├── tabla_terceros.py# tabla OFICIAL FIFA de terceros (Anexo C, 495 combinaciones)
 └── viz.py           # gráficos (campeón, heatmap de avance, grupos, calibración)
 scripts/
 └── enriquecer_excel.py  # re-genera el Excel: datos curados + fórmulas
@@ -25,6 +26,11 @@ Lectura robusta del Excel (header en fila 2, claves por `País`, tolerancia a Na
   una ruta o **bytes** (para Colab vía raw URL). Devuelve un dataclass con:
   - `equipos` (DataFrame maestro por selección), `fixture` (72 partidos de grupo),
     `bracket` (cruces del cuadro final), `grupos` (dict grupo→países), `meta` (conteos).
+- `cargar_resultados_ko(fuente) -> dict` — lee la hoja `Eliminatorias` **completa** y
+  devuelve `{(ronda, partido): (goles_1, goles_2)}` de TODAS las rondas (32avos…Final)
+  con ambos goles cargados. Lo consume `simulate.probabilidades_eliminatorias` para
+  avanzar el cuadro ronda por ronda. (`construir_bracket` sólo conserva los 32avos,
+  que tienen slots; esta función recupera además los resultados de rondas profundas.)
 - Internas: `construir_equipos` une **Selecciones + Historial + DTs + Clasificatorias
   + Predictores_país** por `País`; `construir_fixture` (marca `jugado` = ambos goles
   presentes); `construir_bracket` (lee `Eliminatorias`: `slot_1/slot_2` posicionales,
@@ -116,8 +122,9 @@ Actualización de Elo y simulación Monte Carlo del torneo.
   - `avance` ya **no** trae la columna duplicada de campeón (sólo `prob_campeon`).
 - Internas: `GeneradorGoles` (muestreo + `prob_gana_a` para penales),
   `_orden_grupo` (**desempate oficial FIFA**: pts → DG → GF globales → head-to-head),
-  `_asignar_terceros` (**matching bipartito** de los 8 mejores terceros;
-  `scipy.linear_sum_assignment`), `_parse_slot`, `_una_corrida`, `_subir_ronda`.
+  `_asignar_terceros` (**tabla OFICIAL FIFA** de los 8 mejores terceros, vía
+  `tabla_terceros.TABLA_TERCEROS`; fallback voraz), `_resolver_32avos`, `_prob_1x2_ko`,
+  `_parse_slot`, `_una_corrida`, `_subir_ronda`.
 - **Eliminatorias = localía moderada** para anfitriones (`FACTOR_LOCALIA_KO=0.3`);
   empates resueltos por fuerza (prórroga/penales).
 - `bracket_mas_probable(...)` — cuadro de **32avos** del escenario más probable
@@ -127,6 +134,20 @@ Actualización de Elo y simulación Monte Carlo del torneo.
   (mayor prob. de pasar; "(muy parejo)" si ~50/50) y el campeón del escenario. Respeta
   los KO ya cargados. **Es un escenario partido a partido, no la prob. de campeón**
   (esa la da `simular_torneo`).
+- `probabilidades_eliminatorias(equipos, fixture, bracket, dixon_coles, resultados_ko)`
+  — estado del cuadro KO **ronda por ronda**: para cada partido con equipos ya
+  definidos devuelve `estado` (`jugado`/`pendiente`) con marcador+ganador o
+  `P(gana1)/P(empate)/P(gana2)` (Dixon-Coles). Marca la **próxima ronda pendiente**
+  (`proxima=True`). Avanza solo (32avos→…→Final) a medida que se cargan resultados KO.
+  Sección **12c** del notebook. `resultados_ko` viene de `data_loader.cargar_resultados_ko`.
+
+## `tabla_terceros.py`
+Tabla **OFICIAL FIFA** (Anexo C del reglamento 2026, **495 combinaciones**) que mapea
+los 8 mejores terceros a los cruces de 32avos según qué grupos aportan terceros.
+- `TABLA_TERCEROS` — `{combo_8_grupos: grupos_de_tercero_por_ganador}` (clave ordenada
+  alfabéticamente; valor = string de 8 letras en el orden `GANADORES_VS_TERCERO`).
+- `GANADORES_VS_TERCERO` — `['A','B','D','E','G','I','K','L']` (ganadores que enfrentan
+  a un tercero, orden de las columnas del valor).
 
 ## `viz.py`
 Gráficos guardados en `outputs/`.
