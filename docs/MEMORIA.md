@@ -146,6 +146,15 @@ se cargan nuevos resultados en el Excel y se reejecuta el notebook.
 3. Para **tocar el código**: trabajá en `src/`, probá local con el snippet de la
    sección 7, y commiteá.
 
+> **Dónde vive la lógica (importante para no perder tiempo):** TODA la lógica de
+> cálculo está en `src/` (`data_loader.py`, `features.py`, `models.py`, `simulate.py`,
+> `tabla_terceros.py`, `viz.py`). El **notebook es sólo un cascarón** que importa y
+> llama esas funciones; **casi nunca hay que tocarlo**, salvo para agregar una *sección
+> nueva* de salida (como la 12c). Los arreglos de cálculo (p.ej. el orden del árbol del
+> bracket) van en `src/` y el notebook los toma solo al reejecutar (`git reset --hard
+> origin/main`). Si retomás en otra PC: `git clone`, leer esta MEMORIA, y listo —
+> todo el estado y las decisiones están versionados en el repo.
+
 ## 4. Flujo del pipeline (orden de ejecución)
 
 ```
