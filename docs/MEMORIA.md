@@ -1,7 +1,12 @@
 # MEMORIA DEL PROYECTO — ML_prediccion_mundial2026
 
 > Documento maestro para **retomar el proyecto desde cualquier sesión**.
-> Última actualización: **2026-06-25**. Cambios recientes: variables curadas
+> Última actualización: **2026-06-28**. Cambios recientes: **fase de grupos COMPLETA
+> (72/72)**; **tabla OFICIAL FIFA de terceros** (`src/tabla_terceros.py`, 495 combos)
+> que arregla el bug de combinación de 32avos; **probabilidades por ronda de KO**
+> (`probabilidades_eliminatorias`, sección 12c: P(1/X/2) de la próxima ronda, avanza
+> sola al cargar resultados); `cargar_resultados_ko`; nombres de tercero corregidos en
+> el Excel. Cambios previos: variables curadas
 > DT/clasificatoria/top-5; zoo de ML con auto-tuning; auto-calibración de nu/lambda;
 > **predictor final = mejor combinación medida** (`elegir_predictor_final`); XGBoost
 > nativo (clases enteras); fijado de resultados de KO; fórmulas Excel; **camino más
@@ -36,9 +41,22 @@ se cargan nuevos resultados en el Excel y se reejecuta el notebook.
 
 - **48 selecciones**, 12 grupos (A–L). Confeds: UEFA 16, CAF 10, AFC 9,
   CONCACAF 6, CONMEBOL 6, OFC 1.
-- **60 de 72 partidos de grupo ya cargados** (fechas 1 y 2 completas de los 12
-  grupos + parte de la fecha 3). El resto se simula. (Se va actualizando: el conteo
-  sube a medida que se cargan resultados.)
+- **FASE DE GRUPOS COMPLETA: 72/72 partidos cargados** (jun-2026). Empiezan las
+  eliminatorias: los 32avos ya están definidos (32 clasificados), 0 resultados de KO
+  cargados aún. A medida que se carguen goles en la hoja Eliminatorias, el cuadro y
+  las probabilidades por ronda avanzan solos.
+- **(jun-2026) Bug de combinación de 32avos ARREGLADO**: la asignación de los 8
+  mejores terceros usaba matching bipartito (factible pero NO oficial). Ahora usa la
+  **tabla OFICIAL FIFA** (`src/tabla_terceros.py`, Anexo C, 495 combinaciones). El
+  bracket coincide con el real (combinación `BDEFIJKL` = la del torneo). Se corrigieron
+  los 7 nombres de tercero literales mal en el Excel (la asignación 1º/2º era fórmula
+  y estaba bien). **Nota:** grupo G en el Excel = NZ 2º / Egipto 4º (pts 4 vs 2); si un
+  bracket externo difiere es por resultados de grupo distintos (dato, no código).
+- **(jun-2026) Probabilidades por ronda de eliminatorias** (sección 12c del notebook):
+  `probabilidades_eliminatorias` imprime los partidos de la próxima ronda pendiente con
+  **P(gana 1)/P(empate)/P(gana 2)** (Dixon-Coles, 90') y avanza solo a 16avos→Cuartos→
+  Semis→Final al cargar resultados. `data_loader.cargar_resultados_ko` lee los goles KO
+  de todas las rondas.
 - **Puntos/Ranking FIFA completos para las 48 (0 imputados; antes 11).** Se cargaron
   los reales del ranking 19-nov-2025 (ver §5 y §8 para el método).
 - **Valor de plantel** (Transfermarkt jun-2026) y **edad promedio del plantel**
@@ -176,6 +194,14 @@ Excel  ─► data_loader.cargar_datos()         → equipos, fixture, bracket
     eliminatorias (0.0 = neutral, 1.0 = ventaja plena de grupos). Ver sección 5.
   - `bracket_mas_probable(...)` — cuadro de 32avos del escenario más probable
     (nombres de selección) que llena `Equipo 1`/`Equipo 2` de Eliminatorias.
+  - `probabilidades_eliminatorias(equipos, fixture, bracket, dc, resultados_ko)` —
+    estado del cuadro KO ronda por ronda; P(1/X/2) de cada partido con equipos ya
+    definidos; marca la próxima ronda pendiente (`proxima=True`). Avanza solo al
+    cargar resultados. Sección 12c del notebook. `resultados_ko` = dict
+    `{(ronda, partido): (g1,g2)}` (de `data_loader.cargar_resultados_ko`).
+  - `_asignar_terceros(...)` — usa la **tabla OFICIAL FIFA** (`tabla_terceros.py`,
+    495 combos) para mapear los 8 terceros a los slots de 32avos (antes era matching
+    bipartito, que daba una asignación factible pero no la oficial).
   - `cuadro_completo_probable(...)` — juega el camino más probable HASTA LA FINAL
     (32avos→Final): por cada cruce devuelve marcador decisivo modal, quién avanza
     y el campeón del escenario. Respeta KO ya cargados. Salida `cuadro_completo.csv`,

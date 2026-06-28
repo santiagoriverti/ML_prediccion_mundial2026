@@ -307,6 +307,61 @@ def construir_bracket(xls: pd.ExcelFile) -> pd.DataFrame:
     return b
 
 
+def _clave_ronda_ko(texto) -> str | None:
+    """Normaliza el nombre de ronda de Eliminatorias a una clave canónica.
+
+    '32avos de final' -> '32avos', '16avos de final' -> '16avos',
+    'Cuartos de final' -> 'Cuartos', 'Semifinales' -> 'Semifinales',
+    'Final' -> 'Final'. 'Tercer puesto' y otros -> None (no entran al árbol).
+    """
+    if texto is None or (isinstance(texto, float) and np.isnan(texto)):
+        return None
+    t = unicodedata.normalize("NFKD", str(texto)).encode("ascii", "ignore").decode().lower()
+    if "32" in t:
+        return "32avos"
+    if "16" in t:
+        return "16avos"
+    if "cuarto" in t:
+        return "Cuartos"
+    if "semi" in t:
+        return "Semifinales"
+    if "tercer" in t:
+        return None
+    if "final" in t:
+        return "Final"
+    return None
+
+
+def cargar_resultados_ko(fuente) -> dict:
+    """Lee la hoja Eliminatorias COMPLETA y devuelve los resultados KO cargados.
+
+    A diferencia de ``construir_bracket`` (que sólo conserva las filas con ambos
+    slots, es decir los 32avos), esto recorre TODAS las rondas (32avos…Final) y
+    devuelve ``{(ronda, partido): (goles_1, goles_2)}`` para las filas con ambos
+    goles presentes. Permite seguir el cuadro ronda por ronda a medida que se
+    cargan resultados de eliminatorias.
+    """
+    xls = _abrir_libro(fuente)
+    eli = _leer_hoja(xls, "Eliminatorias")
+    if eli is None:
+        return {}
+    res = {}
+    for _, fila in eli.iterrows():
+        ronda = _clave_ronda_ko(_col_fila(fila, 0))
+        partido = pd.to_numeric(_col_fila(fila, 1), errors="coerce")
+        g1 = pd.to_numeric(_col_fila(fila, 3), errors="coerce")
+        g2 = pd.to_numeric(_col_fila(fila, 4), errors="coerce")
+        if ronda is None or pd.isna(partido) or pd.isna(g1) or pd.isna(g2):
+            continue
+        res[(ronda, int(partido))] = (float(g1), float(g2))
+    return res
+
+
+def _col_fila(fila: pd.Series, idx: int):
+    """Acceso por posición a una fila (Series) tolerante al índice."""
+    return fila.iloc[idx]
+
+
 # ---------------------------------------------------------------------------
 # Punto de entrada principal
 # ---------------------------------------------------------------------------

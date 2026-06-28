@@ -3,6 +3,39 @@
 Formato: cambios agrupados por fecha. El proyecto entrega **probabilidades**, no
 consejos de apuestas.
 
+## 2026-06-28 — Tabla OFICIAL de terceros + probabilidades por ronda de KO
+
+### Arreglo (bug de combinación de 32avos)
+- La asignación de los **8 mejores terceros** a los cruces de 32avos usaba un
+  **matching bipartito** que daba una asignación *factible* pero **NO la oficial**
+  → los 32avos salían mal combinados (p.ej. Alemania-Suecia y Francia-Paraguay en
+  vez de Alemania-Paraguay y Francia-Suecia; Bélgica-Argelia y Suiza-Senegal en vez
+  de Bélgica-Senegal y Suiza-Argelia).
+- Nuevo módulo `src/tabla_terceros.py` con la **tabla OFICIAL FIFA** (Anexo C del
+  reglamento 2026, **495 combinaciones**, scrapeada de Wikipedia): según qué 8 grupos
+  aportan terceros, mapea qué tercero enfrenta a cada ganador (1A,1B,1D,1E,1G,1I,1K,1L).
+- `_asignar_terceros` (en `simulate.py`) ahora usa esa tabla (con fallback voraz).
+  `_precomputar` guarda, por cada slot de tercero, el **grupo ganador** con el que se
+  cruza. Validado contra el bracket real (combinación `BDEFIJKL`).
+- **Excel** (hoja Eliminatorias): corregidos los **7 nombres de tercero** literales
+  que estaban mal (Suecia→Paraguay, Paraguay→Suecia, Cabo Verde→Ecuador,
+  Argelia→RD Congo, Corea del Sur→Senegal, Bélgica→Argelia, Croacia→Ghana). Las
+  fórmulas array de 1º/2º quedaron intactas.
+
+### Nueva salida (sección 12c del notebook)
+- `simulate.probabilidades_eliminatorias(...)`: estado del cuadro **ronda por ronda**
+  con **P(gana 1) / P(empate) / P(gana 2)** (Dixon-Coles, 90') de cada partido cuyos
+  dos equipos ya están definidos. Marca la **próxima ronda pendiente**. A medida que
+  se cargan resultados de KO en el Excel, **avanza solo**: 32avos→16avos→Cuartos→
+  Semifinales→Final (las rondas jugadas se listan con marcador y ganador).
+- `data_loader.cargar_resultados_ko(fuente)`: lee la hoja Eliminatorias completa y
+  devuelve `{(ronda, partido): (goles_1, goles_2)}` de TODAS las rondas (no sólo 32avos).
+
+### Nota de datos
+- Grupo G: con los resultados cargados, **Nueva Zelanda 2º / Egipto 4º** (pts 4 vs 2).
+  Si un bracket externo muestra Egipto 2º, es porque sus **resultados de grupo difieren**
+  de los del Excel (es dato, no código): revisar los goles del grupo G si corresponde.
+
 ## 2026-06-25 — Figuras de publicación en inglés
 
 ### Ajuste

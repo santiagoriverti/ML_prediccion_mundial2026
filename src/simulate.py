@@ -39,6 +39,7 @@ import numpy as np
 import pandas as pd
 
 from models import elo_esperado
+from tabla_terceros import TABLA_TERCEROS, GANADORES_VS_TERCERO
 
 # Orden de rondas para el seguimiento de "hasta dónde llegó" cada selección.
 RONDAS = ["Fase de grupos", "32avos", "16avos", "Cuartos",
@@ -190,46 +191,54 @@ def _orden_grupo(equipos_grupo, resultados):
 def _asignar_terceros(slots_terceros, terceros_clasificados):
     """Asigna los 8 mejores terceros a los slots '3º X/Y/Z...' del bracket.
 
-    ``slots_terceros``: lista de (indice_partido, set_grupos_elegibles).
-    ``terceros_clasificados``: lista de (grupo, pais) de los 8 terceros.
+    Usa la **tabla OFICIAL FIFA** (Anexo C del reglamento 2026, 495 combinaciones,
+    en ``tabla_terceros.TABLA_TERCEROS``): según QUÉ 8 grupos aportan los terceros
+    clasificados, hay una asignación predeterminada de qué tercero enfrenta a cada
+    ganador de grupo. Esto reemplaza el matching bipartito anterior, que daba una
+    asignación factible pero **no la oficial** (los 32avos salían mal combinados).
 
-    Usa matching bipartito (linear_sum_assignment) respetando la elegibilidad
-    codificada en cada slot. Si no hay matching perfecto factible (no debería
-    con la tabla oficial), cae a una asignación voraz.
+    ``slots_terceros``: lista de ``(indice_partido, grupo_ganador, set_elegibles)``,
+        donde ``grupo_ganador`` es el grupo del '1º X' con el que se cruza el slot.
+    ``terceros_clasificados``: lista de ``(grupo, pais)`` de los 8 terceros.
+
+    Devuelve ``{indice_partido: pais_tercero}``. Si la combinación no estuviera en
+    la tabla (no debería: cubre las 495), cae a una asignación voraz por elegibilidad.
     """
-    from scipy.optimize import linear_sum_assignment
+    grupos = sorted(g for g, _ in terceros_clasificados)
+    clave = "".join(grupos)
+    por_grupo = {g: p for g, p in terceros_clasificados}
+    fila = TABLA_TERCEROS.get(clave)
 
-    grupos_terceros = [g for g, _ in terceros_clasificados]
-    n = len(slots_terceros)
-    # Matriz de costo: 0 si elegible, gran penalización si no.
-    costo = np.full((n, n), 1000.0)
-    for i, (_, elegibles) in enumerate(slots_terceros):
-        for k, g in enumerate(grupos_terceros):
-            if g in elegibles:
-                costo[i, k] = 0.0
-    filas, cols = linear_sum_assignment(costo)
     asignacion = {}
-    factible = True
-    for i, k in zip(filas, cols):
-        if costo[i, k] >= 1000.0:
-            factible = False
-        asignacion[slots_terceros[i][0]] = terceros_clasificados[k][1]
-    if not factible:
-        # Voraz: asigna cada slot al tercero elegible aún libre
-        usados = set()
-        for idx_part, elegibles in slots_terceros:
-            elegido = None
+    if fila is not None:
+        # fila = string de 8 letras (grupo del tercero) en el orden GANADORES_VS_TERCERO
+        mapa = dict(zip(GANADORES_VS_TERCERO, fila))   # grupo_ganador -> grupo_tercero
+        ok = True
+        for idx_part, grupo_ganador, _elig in slots_terceros:
+            g_tercero = mapa.get(grupo_ganador)
+            pais = por_grupo.get(g_tercero)
+            if pais is None:
+                ok = False; break
+            asignacion[idx_part] = pais
+        if ok and len(asignacion) == len(slots_terceros):
+            return asignacion
+        asignacion = {}
+
+    # Fallback voraz por elegibilidad (clave ausente: no debería ocurrir).
+    usados = set()
+    for idx_part, _grupo_ganador, elegibles in slots_terceros:
+        elegido = None
+        for g, pais in terceros_clasificados:
+            if pais in usados:
+                continue
+            if g in elegibles:
+                elegido = pais; break
+        if elegido is None:
             for g, pais in terceros_clasificados:
-                if pais in usados:
-                    continue
-                if g in elegibles:
+                if pais not in usados:
                     elegido = pais; break
-            if elegido is None:  # último recurso: cualquiera libre
-                for g, pais in terceros_clasificados:
-                    if pais not in usados:
-                        elegido = pais; break
-            usados.add(elegido)
-            asignacion[idx_part] = elegido
+        usados.add(elegido)
+        asignacion[idx_part] = elegido
     return asignacion
 
 
@@ -293,9 +302,12 @@ def _precomputar(equipos, fixture, bracket, gen):
         s1 = _parse_slot(fila["slot_1"])
         s2 = _parse_slot(fila["slot_2"])
         cruces_def.append((fila["partido"], s1, s2))
-        for s in (s1, s2):
-            if s[0] == "tercero":
-                slots_terceros.append((fila["partido"], s[2]))
+        # Cada slot de tercero se cruza con un '1º X' (el otro slot del partido);
+        # ese grupo ganador es la clave para la tabla oficial de terceros.
+        if s1[0] == "tercero" and s2[0] == "pos":
+            slots_terceros.append((fila["partido"], s2[2], s1[2]))
+        elif s2[0] == "tercero" and s1[0] == "pos":
+            slots_terceros.append((fila["partido"], s1[2], s2[2]))
         # Resultado de 32avos cargado (ambos goles presentes) -> hecho fijo:
         # el ganador avanza y el perdedor queda eliminado en TODAS las corridas.
         g1, g2 = fila.get("goles_1"), fila.get("goles_2")
@@ -539,6 +551,140 @@ def bracket_mas_probable(equipos, fixture, bracket, dixon_coles):
               "equipo_2": resolver(s2, idp)}
              for (idp, s1, s2) in ctx["cruces_def"]]
     return pd.DataFrame(filas).sort_values("partido").reset_index(drop=True)
+
+
+def _resolver_32avos(ctx):
+    """Resuelve los cruces de 32avos (equipos por nombre) con los resultados de
+    grupo cargados + la tabla OFICIAL de terceros. Devuelve lista ordenada de
+    ``(partido, equipo_1, equipo_2)``.
+    """
+    res_grupo = {}
+    for (grupo, a, b, jugado, gaf, gbf, ip) in ctx["partidos"]:
+        if jugado:
+            ga, gb = gaf, gbf
+        else:
+            ga = int(round(ctx["lam_pend"][ip]))
+            gb = int(round(ctx["mu_pend"][ip]))
+        res_grupo.setdefault(grupo, []).append((a, b, ga, gb))
+
+    pos_grupo, terceros = {}, []
+    for grupo, r in res_grupo.items():
+        orden = _orden_grupo(ctx["grupos"][grupo], r)
+        for k, pais in enumerate(orden, start=1):
+            pos_grupo[(grupo, k)] = pais
+        if len(orden) >= 3:
+            t = orden[2]
+            pts = gf = gc = 0
+            for a, b, ga, gb in r:
+                if a == t:
+                    gf += ga; gc += gb
+                    pts += 3 if ga > gb else (1 if ga == gb else 0)
+                elif b == t:
+                    gf += gb; gc += ga
+                    pts += 3 if gb > ga else (1 if ga == gb else 0)
+            terceros.append((grupo, t, pts, gf - gc, gf))
+    terceros_ord = sorted(terceros, key=lambda x: (x[2], x[3], x[4]), reverse=True)
+    mejores = [(g, p) for (g, p, *_) in terceros_ord[:8]]
+    asign = (_asignar_terceros(ctx["slots_terceros"], mejores)
+             if ctx["slots_terceros"] else {})
+
+    def resolver(slot, idp):
+        tipo, pos, info = slot
+        return pos_grupo.get((info, pos)) if tipo == "pos" else asign.get(idp)
+
+    return [(idp, resolver(s1, idp), resolver(s2, idp))
+            for (idp, s1, s2) in sorted(ctx["cruces_def"], key=lambda c: c[0])]
+
+
+def _prob_1x2_ko(dixon_coles, e1, e2, anf):
+    """P(gana e1) / P(empate) / P(gana e2) en 90' con Dixon-Coles (localía KO)."""
+    M = dixon_coles.matriz_marcadores(e1, e2, anf)
+    p1 = float(np.tril(M, -1).sum())
+    pX = float(np.trace(M))
+    p2 = float(np.triu(M, 1).sum())
+    s = p1 + pX + p2
+    return p1 / s, pX / s, p2 / s
+
+
+def probabilidades_eliminatorias(equipos, fixture, bracket, dixon_coles,
+                                 resultados_ko=None):
+    """Estado del cuadro de eliminatorias ronda por ronda, con probabilidades.
+
+    Resuelve los 32avos (resultados de grupo + tabla OFICIAL de terceros) y avanza
+    el árbol binario fijando los resultados de KO YA CARGADOS. Para cada partido
+    cuyos dos equipos ya están definidos devuelve una fila con:
+      * ``estado='jugado'``  -> ``marcador`` y ``ganador`` (resultado cargado), o
+      * ``estado='pendiente'`` -> ``p_gana_1`` / ``p_empate`` / ``p_gana_2`` (DC).
+    Los partidos cuyos equipos aún no se conocen (rondas futuras) NO aparecen.
+    La columna ``proxima`` marca la PRÓXIMA ronda pendiente (los partidos que
+    todavía no se jugaron y ya tienen rival), pensada para imprimir "lo que viene".
+
+    ``resultados_ko``: dict ``{(ronda, partido): (g1, g2)}`` con goles KO cargados
+    de TODAS las rondas. Para 32avos también se toman de la hoja si faltan.
+    Devuelve un DataFrame ordenado por ronda y partido.
+    """
+    gen = GeneradorGoles(dixon_coles, np.random.default_rng(0))
+    ctx = _precomputar(equipos, fixture, bracket, gen)
+    sede = ctx["sede"]
+    rating = gen._rating
+
+    # Resultados KO por (ronda, partido): los pasados + los 32avos de la hoja.
+    res_ko = dict(resultados_ko or {})
+    for partido, (g1, g2) in ctx.get("fixed_ko", {}).items():
+        res_ko.setdefault(("32avos", int(partido)), (g1, g2))
+
+    nombres = ["32avos", "16avos", "Cuartos", "Semifinales", "Final"]
+    cruces = _resolver_32avos(ctx)
+    # actual: lista de (partido, e1, e2) de la ronda en curso (32avos: ids reales).
+    actual = list(cruces)
+
+    filas = []
+    ronda_pendiente = None  # primera ronda con algún partido pendiente
+    for ronda in nombres:
+        ganadores = []   # ganador de cada partido (None si pendiente/indefinido)
+        for pos, (idp, e1, e2) in enumerate(actual, start=1):
+            partido = idp if ronda == "32avos" else pos
+            if e1 is None or e2 is None:
+                ganadores.append(None)
+                continue
+            anf = FACTOR_LOCALIA_KO * (sede.get(e1, 0.0) - sede.get(e2, 0.0))
+            res = res_ko.get((ronda, partido))
+            if res is not None:
+                g1, g2 = int(res[0]), int(res[1])
+                if g1 > g2:
+                    gan = e1
+                elif g2 > g1:
+                    gan = e2
+                else:  # empate cargado -> definición por fuerza (prórroga/penales)
+                    we = elo_esperado(rating.get(e1, 1500.0), rating.get(e2, 1500.0), anf)
+                    gan = e1 if we >= 0.5 else e2
+                filas.append({"ronda": ronda, "partido": partido,
+                              "equipo_1": e1, "equipo_2": e2, "estado": "jugado",
+                              "marcador": f"{g1}-{g2}", "ganador": gan,
+                              "p_gana_1": np.nan, "p_empate": np.nan,
+                              "p_gana_2": np.nan, "proxima": False})
+                ganadores.append(gan)
+            else:
+                p1, pX, p2 = _prob_1x2_ko(dixon_coles, e1, e2, anf)
+                filas.append({"ronda": ronda, "partido": partido,
+                              "equipo_1": e1, "equipo_2": e2, "estado": "pendiente",
+                              "marcador": "", "ganador": "",
+                              "p_gana_1": p1, "p_empate": pX, "p_gana_2": p2,
+                              "proxima": False})
+                if ronda_pendiente is None:
+                    ronda_pendiente = ronda
+                ganadores.append(None)
+        # Siguiente ronda: empareja ganadores consecutivos (árbol binario).
+        actual = [(j // 2 + 1, ganadores[j], ganadores[j + 1] if j + 1 < len(ganadores) else None)
+                  for j in range(0, len(ganadores), 2)]
+        if not actual:
+            break
+
+    df = pd.DataFrame(filas)
+    if not df.empty and ronda_pendiente is not None:
+        df.loc[(df["ronda"] == ronda_pendiente) & (df["estado"] == "pendiente"),
+               "proxima"] = True
+    return df
 
 
 def cuadro_completo_probable(equipos, fixture, bracket, dixon_coles):
