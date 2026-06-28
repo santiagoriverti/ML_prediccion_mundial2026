@@ -3,6 +3,24 @@
 Formato: cambios agrupados por fecha. El proyecto entrega **probabilidades**, no
 consejos de apuestas.
 
+## 2026-06-28 — Orden OFICIAL del árbol del bracket (16avos→final)
+
+### Arreglo (bug de avance del cuadro)
+- El modelo emparejaba a los ganadores de 32avos según el **orden de filas de la hoja
+  Eliminatorias**, que **NO es el orden del árbol** del bracket → 16avos mal armados
+  (p.ej. Argentina vs Colombia en vez de Argentina vs el ganador de Australia-Egipto).
+- Nuevo `ORDEN_BRACKET_R32` + `_reordenar_bracket` (en `simulate.py`): reordena los 16
+  cruces al **orden OFICIAL del árbol FIFA 2026** (display order del bracket de
+  Wikipedia/FIFA, validado con los números de partido 73–88). Cada cruce se identifica
+  por sus slots de posición (1ºX/2ºX). Aplicado en `_precomputar`, así el emparejamiento
+  consecutivo de ganadores reproduce el cuadro real en TODAS las rondas (8vos→final).
+- `_resolver_32avos` y `cuadro_completo_probable` dejan de ordenar por `partido` (antes
+  rompían el orden del árbol). Validado: 16avos = **Argentina vs (Australia/Egipto)**,
+  Suiza vs Colombia, Alemania vs Francia, etc., coincidiendo con el bracket oficial.
+- Pronóstico (20.000 corridas, con el árbol corregido): **Argentina ~10,1 % · Francia
+  ~9,5 % · España ~6,6 % · México ~6,2 % · Brasil ~6,2 %** … (cambia respecto del cuadro
+  viejo porque los caminos del bracket eran incorrectos).
+
 ## 2026-06-28 — Corrección de datos del grupo G + docs al día
 
 ### Datos

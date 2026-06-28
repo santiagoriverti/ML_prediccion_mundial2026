@@ -125,6 +125,10 @@ Actualización de Elo y simulación Monte Carlo del torneo.
   `_asignar_terceros` (**tabla OFICIAL FIFA** de los 8 mejores terceros, vía
   `tabla_terceros.TABLA_TERCEROS`; fallback voraz), `_resolver_32avos`, `_prob_1x2_ko`,
   `_parse_slot`, `_una_corrida`, `_subir_ronda`.
+- **Orden OFICIAL del árbol del bracket** (`ORDEN_BRACKET_R32` + `_reordenar_bracket`):
+  los 16 cruces de 32avos se reordenan al orden real del cuadro FIFA 2026 (no el orden
+  de filas del Excel) en `_precomputar`, así el emparejamiento consecutivo de ganadores
+  arma bien 16avos→…→final. Cada cruce se identifica por sus slots de posición (1ºX/2ºX).
 - **Eliminatorias = localía moderada** para anfitriones (`FACTOR_LOCALIA_KO=0.3`);
   empates resueltos por fuerza (prórroga/penales).
 - `bracket_mas_probable(...)` — cuadro de **32avos** del escenario más probable

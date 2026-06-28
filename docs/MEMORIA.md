@@ -1,7 +1,11 @@
 # MEMORIA DEL PROYECTO — ML_prediccion_mundial2026
 
 > Documento maestro para **retomar el proyecto desde cualquier sesión**.
-> Última actualización: **2026-06-28**. Cambios recientes: **fase de grupos COMPLETA
+> Última actualización: **2026-06-28 (b)**. Cambio más reciente: **orden OFICIAL del
+> árbol del bracket** (`ORDEN_BRACKET_R32` + `_reordenar_bracket` en `simulate.py`):
+> el avance de 32avos→16avos→…→final usaba el orden de filas del Excel (≠ árbol) y
+> armaba mal los cruces; ahora reproduce el cuadro oficial FIFA (validado: 16avos =
+> Argentina vs ganador de Australia-Egipto). Antes: **fase de grupos COMPLETA
 > (72/72)**; **tabla OFICIAL FIFA de terceros** (`src/tabla_terceros.py`, 495 combos)
 > que arregla el bug de combinación de 32avos; **probabilidades por ronda de KO**
 > (`probabilidades_eliminatorias`, sección 12c: P(1/X/2) de la próxima ronda, avanza
@@ -104,11 +108,16 @@ se cargan nuevos resultados en el Excel y se reejecuta el notebook.
 - Pipeline probado de punta a punta. Notebook ejecutado headless **sin errores**
   con el Excel enriquecido (raw URL). End-to-end ~3-3,5 min (auto-tuning + OOF +
   20.000 corridas Monte Carlo).
-- Pronóstico actual (top campeón, **72 resultados = grupos completos**, predictor final
-  elegido por log-loss OOF, localía KO 0.3): **Argentina ~12,0 % · Francia ~11,9 % ·
-  España ~8,0 % · México ~6,6 % · Brasil ~6,4 % · Alemania ~5,9 %** … (suma = 1,0).
-  Con los grupos completos el predictor final ganador es el **blend de los 3 mejores**
-  (elo+rf+xgb; log-loss OOF 0,887, ECE ≈ 0,052); `nu`=0,26, `lambda_prior`=4.
+- **(jun-2026, b) Orden OFICIAL del árbol del bracket**: el avance del cuadro empareja
+  a los ganadores según `ORDEN_BRACKET_R32` (orden real del árbol FIFA), no el orden de
+  filas del Excel. Validado contra el bracket oficial (16avos: Argentina vs ganador de
+  Australia-Egipto; Suiza vs Colombia; Alemania vs Francia; etc.).
+- Pronóstico actual (top campeón, **72 resultados = grupos completos**, **árbol del
+  bracket corregido**, localía KO 0.3): **Argentina ~10,1 % · Francia ~9,5 % · España
+  ~6,6 % · México ~6,2 % · Brasil ~6,2 % · Alemania ~5,5 %** … (suma = 1,0). El predictor
+  final 1/X/2 sigue siendo el **blend de los 3 mejores** (elo+rf+xgb); `nu`=0,26,
+  `lambda_prior`=4. (Los números cambiaron vs el cuadro viejo porque los caminos del
+  bracket estaban mal armados.)
   **Importante:** el predictor final es **data-driven y cambia con los datos** — a
   veces gana el ensemble fijo (Elo/DC pesan más), a veces el blend top-3; no asumir
   uno fijo. Se recalcula en cada corrida.

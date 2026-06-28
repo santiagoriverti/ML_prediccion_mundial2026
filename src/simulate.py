@@ -53,6 +53,50 @@ RONDAS = ["Fase de grupos", "32avos", "16avos", "Cuartos",
 FACTOR_LOCALIA_KO = 0.3
 
 
+# Orden OFICIAL del cuadro FIFA 2026 (display order del bracket de Wikipedia / FIFA).
+# El problema: el ORDEN DE FILAS de la hoja Eliminatorias NO es el orden del árbol del
+# bracket, así que emparejar filas consecutivas daba 16avos mal armados (p.ej. Argentina
+# vs Colombia en lugar de Argentina vs el ganador de Australia-Egipto). Esta lista pone
+# los 16 cruces de 32avos en el orden REAL del árbol: emparejando consecutivamente
+# (1,2)->8vos, (3,4)->8vos, ... y luego igual en 4tos/semis/final se reproduce el cuadro
+# oficial. Cada cruce se identifica por sus slots de POSICIÓN (1ºX/2ºX), que son únicos.
+ORDEN_BRACKET_R32 = [
+    frozenset({"1E"}),         frozenset({"1I"}),
+    frozenset({"2A", "2B"}),   frozenset({"1F", "2C"}),
+    frozenset({"2K", "2L"}),   frozenset({"1H", "2J"}),
+    frozenset({"1D"}),         frozenset({"1G"}),
+    frozenset({"1C", "2F"}),   frozenset({"2E", "2I"}),
+    frozenset({"1A"}),         frozenset({"1L"}),
+    frozenset({"1J", "2H"}),   frozenset({"2D", "2G"}),
+    frozenset({"1B"}),         frozenset({"1K"}),
+]
+
+
+def _slots_pos(s1, s2):
+    """Etiquetas de los slots de POSICIÓN de un cruce, p.ej. {'1E'} o {'2A','2B'}.
+
+    Los slots de tercero ('3º A/B/...') se ignoran (varían según qué grupos clasifican);
+    los de posición (1ºX/2ºX) identifican unívocamente cada cruce del bracket.
+    """
+    labs = set()
+    for s in (s1, s2):
+        if s[0] == "pos":
+            labs.add(f"{s[1]}{s[2]}")
+    return frozenset(labs)
+
+
+def _reordenar_bracket(cruces_def):
+    """Reordena los 16 cruces de 32avos al ORDEN OFICIAL del árbol (``ORDEN_BRACKET_R32``).
+
+    Así, emparejar consecutivamente los ganadores ronda a ronda reproduce el cuadro
+    oficial FIFA. Si la estructura de slots no coincide (Excel distinto), deja el orden
+    original como red de seguridad.
+    """
+    por_sig = {_slots_pos(s1, s2): (idp, s1, s2) for (idp, s1, s2) in cruces_def}
+    ordenado = [por_sig[sig] for sig in ORDEN_BRACKET_R32 if sig in por_sig]
+    return ordenado if len(ordenado) == len(cruces_def) else list(cruces_def)
+
+
 # ===========================================================================
 # 1) Actualización de Elo con los resultados cargados
 # ===========================================================================
@@ -313,6 +357,10 @@ def _precomputar(equipos, fixture, bracket, gen):
         g1, g2 = fila.get("goles_1"), fila.get("goles_2")
         if pd.notna(g1) and pd.notna(g2):
             fixed_ko[fila["partido"]] = (float(g1), float(g2))
+
+    # Reordena los cruces al ORDEN OFICIAL del árbol del bracket (no el orden de filas
+    # del Excel), para que el emparejamiento consecutivo de ganadores arme bien el cuadro.
+    cruces_def = _reordenar_bracket(cruces_def)
 
     return {
         "paises": paises, "sede": sede, "partidos": partidos,
@@ -592,8 +640,10 @@ def _resolver_32avos(ctx):
         tipo, pos, info = slot
         return pos_grupo.get((info, pos)) if tipo == "pos" else asign.get(idp)
 
+    # Importante: se respeta el orden de ctx["cruces_def"] (ya es el orden OFICIAL del
+    # árbol, ver _reordenar_bracket); NO se ordena por partido para no romper el cuadro.
     return [(idp, resolver(s1, idp), resolver(s2, idp))
-            for (idp, s1, s2) in sorted(ctx["cruces_def"], key=lambda c: c[0])]
+            for (idp, s1, s2) in ctx["cruces_def"]]
 
 
 def _prob_1x2_ko(dixon_coles, e1, e2, anf):
@@ -739,8 +789,9 @@ def cuadro_completo_probable(equipos, fixture, bracket, dixon_coles):
         tipo, pos, info = slot
         return pos_grupo.get((info, pos)) if tipo == "pos" else asign.get(idp)
 
+    # Orden OFICIAL del árbol (ctx["cruces_def"] ya viene reordenado); no ordenar por id.
     cruces = [(idp, resolver(s1, idp), resolver(s2, idp))
-              for (idp, s1, s2) in sorted(ctx["cruces_def"], key=lambda c: c[0])]
+              for (idp, s1, s2) in ctx["cruces_def"]]
     ids_r1 = [idp for (idp, _, _) in cruces]
     actual = [(e1, e2) for (_, e1, e2) in cruces]
 
