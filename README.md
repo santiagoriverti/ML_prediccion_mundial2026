@@ -92,13 +92,69 @@ jupyter notebook notebooks/prediccion_mundial2026.ipynb
 1. Abrí `Mundial_2026_fuente_datos.xlsx`.
 2. Cargá los goles de los partidos jugados:
    - Fase de grupos → hoja **Fixture_Grupos**, columnas *Goles A* / *Goles B*.
-   - Fase final → hoja **Eliminatorias**.
+   - Fase final → hoja **Eliminatorias**, columnas *Goles 1* / *Goles 2*.
    - **Regla:** si un partido tiene ambos goles cargados se toma como **hecho
      fijo**; si están vacíos, se **simula**. No se hardcodea ningún resultado.
+   - **Prórroga (alargue):** cargá el marcador final con los goles del alargue
+     incluidos (ej. `2-1`). Avanza el de más goles; nada especial que hacer.
+   - **Penales:** cargá el empate real en *Goles 1*/*Goles 2* (ej. `1-1`) **y la
+     tanda** en las columnas *Pen 1* / *Pen 2* (ej. `4-2`). Los penales sólo deciden
+     quién avanza, sin falsear el marcador de los 90'. (Detalle en
+     [`docs/DICCIONARIO_EXCEL.md`](docs/DICCIONARIO_EXCEL.md).)
 3. Commiteá y pusheá el Excel actualizado.
 4. Reejecutá el notebook (`Ejecutar todo`). Las probabilidades se recalculan
    solas: el rating se actualiza con los nuevos resultados y los partidos
-   pendientes se vuelven a simular.
+   pendientes se vuelven a simular. **El notebook es lo único que necesitás para
+   ver el pronóstico actualizado** (no hay que correr ningún otro script).
+
+## Pre-registro prospectivo (validación honesta)
+
+Antes de jugarse ningún partido de eliminación se **congelaron todas las
+probabilidades de la fase final** (commit + tag firmado + GitHub Release con
+timestamp + hash SHA256 del Excel), para validarlas **prospectivamente** ronda por
+ronda y blindar el estudio contra la crítica de overfitting retrospectivo. Está todo
+en [`preregistro/`](preregistro/) (ver [`PREREGISTRO.md`](preregistro/PREREGISTRO.md)).
+
+### El notebook recalcula solo; el snapshot se corre a mano
+
+Son **dos cosas distintas e independientes**:
+
+- **Ver el pronóstico actualizado** → corré el **notebook**. Recalcula todo solo a
+  partir del Excel (no hay que correr nada más).
+- **Dejar un registro pre-comprometido de una ronda** (para la validación) → corré a
+  mano el **script de snapshot**, *antes* de que se juegue esa ronda. El notebook
+  **no** lo hace por vos: el valor del pre-registro es congelar con timestamp **antes**
+  del resultado, así que es un paso deliberado.
+
+### Pre-registro RODANTE: snapshot por ronda
+
+El pre-registro ancla sólo cubre los 32avos (los únicos cruces conocidos al congelar).
+Para validar la calibración a nivel partido en **toda** la fase final, congelá la
+P(1/X/2) de cada ronda siguiente en la ventana **entre rondas**:
+
+1. Se termina la ronda en curso (p. ej. todos los **octavos**).
+2. Cargás esos resultados en el Excel (`Eliminatorias`, con *Pen 1/2* si hubo penales),
+   commit + push.
+3. **Recién ahí**, desde la raíz del repo y en **local**:
+   ```bash
+   PYTHONUTF8=1 python scripts/snapshot_ronda.py
+   ```
+   Detecta la próxima ronda pendiente con **cruces reales** (p. ej. **cuartos**) y
+   escribe `preregistro/rondas/snapshot_<ronda>_<timestamp>.csv` + un `.json` con
+   timestamp UTC y hashes SHA256. **No toca el pre-registro ancla.**
+4. Commiteá esos archivos **antes** de que se juegue la ronda (el timestamp del commit
+   es la prueba del compromiso):
+   ```bash
+   git add preregistro/rondas/snapshot_*.{csv,json}
+   git commit -m "Pre-registro rodante: <ronda> congelado antes de jugarse"
+   ```
+
+> **Reglas:** congelar sólo con cruces **reales** (esperar a cerrar la ronda en curso) y
+> con el **modelo sin re-ajustar** (los goles de KO no reentrenan nada, sólo fijan quién
+> avanza). Cadencia: 32avos (ancla) → Octavos → Cuartos → Semis → Final (~31 partidos en
+> total). El script lee el **Excel local**, así que cargá los resultados antes de correrlo.
+> Nota: en el código `16avos` = **Octavos de final**. Detalle en
+> [`preregistro/rondas/README.md`](preregistro/rondas/README.md) y `PREREGISTRO.md` §7.
 
 ## Estructura del repo
 
@@ -121,7 +177,13 @@ ML_prediccion_mundial2026/
 │   ├── tabla_terceros.py              # tabla OFICIAL FIFA de terceros (Anexo C, 495 combinaciones)
 │   └── viz.py                         # gráficos (incluye reliability/calibración)
 ├── scripts/
-│   └── enriquecer_excel.py            # re-genera el Excel: datos curados + fórmulas
+│   ├── enriquecer_excel.py            # re-genera el Excel: datos curados + fórmulas
+│   ├── gen_preregistro.py             # genera el pre-registro ANCLA (congelado)
+│   └── snapshot_ronda.py              # pre-registro RODANTE: snapshot por ronda de KO
+├── preregistro/                       # pronóstico congelado (validación prospectiva)
+│   ├── PREREGISTRO.md                 # protocolo + predicciones + hashes (ancla)
+│   ├── *.csv / config_modelo.json     # ancla: campeón, avance, 32avos por partido
+│   └── rondas/                        # snapshots por ronda (Octavos→Final) + README
 └── outputs/                           # CSVs y figuras generadas
 ```
 
