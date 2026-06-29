@@ -1,0 +1,49 @@
+pais,grupo,prob_gana_grupo,prob_clasifica
+México,A,1.0,1.0
+Sudáfrica,A,0.0,1.0
+Corea del Sur,A,0.0,0.0
+Chequia,A,0.0,0.0
+Canadá,B,0.0,1.0
+Bosnia y Herzegovina,B,0.0,1.0
+Suiza,B,1.0,1.0
+Catar,B,0.0,0.0
+Brasil,C,1.0,1.0
+Marruecos,C,0.0,1.0
+Haití,C,0.0,0.0
+Escocia,C,0.0,0.0
+Estados Unidos,D,1.0,1.0
+Paraguay,D,0.0,1.0
+Australia,D,0.0,1.0
+Turquía,D,0.0,0.0
+Alemania,E,1.0,1.0
+Costa de Marfil,E,0.0,1.0
+Ecuador,E,0.0,1.0
+Curazao,E,0.0,0.0
+Países Bajos,F,1.0,1.0
+Japón,F,0.0,1.0
+Suecia,F,0.0,1.0
+Túnez,F,0.0,0.0
+Bélgica,G,1.0,1.0
+Egipto,G,0.0,1.0
+Irán,G,0.0,0.0
+Nueva Zelanda,G,0.0,0.0
+España,H,1.0,1.0
+Cabo Verde,H,0.0,1.0
+Arabia Saudita,H,0.0,0.0
+Uruguay,H,0.0,0.0
+Francia,I,1.0,1.0
+Senegal,I,0.0,1.0
+Noruega,I,0.0,1.0
+Irak,I,0.0,0.0
+Argentina,J,1.0,1.0
+Argelia,J,0.0,1.0
+Austria,J,0.0,1.0
+Jordania,J,0.0,0.0
+Portugal,K,0.0,1.0
+RD Congo,K,0.0,1.0
+Colombia,K,1.0,1.0
+Uzbekistán,K,0.0,0.0
+Inglaterra,L,1.0,1.0
+Croacia,L,0.0,1.0
+Ghana,L,0.0,1.0
+Panamá,L,0.0,0.0
