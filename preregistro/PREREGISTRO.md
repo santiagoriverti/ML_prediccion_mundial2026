@@ -125,6 +125,11 @@ A medida que se jueguen las eliminatorias se evaluarán, **sin cambiar el modelo
    gana el de mejor ranking FIFA; (b) cuota implícita de casas de apuestas si se
    registran el mismo día. Un modelo útil debe **batir al chalk** en log-loss.
 
+5. **Calibración 1/X/2 por partido en TODA la fase final** (vía pre-registro rodante,
+   ver §7): además de los 16 partidos de 32avos, se congela la P(1/X/2) de cada ronda
+   siguiente (Octavos/Cuartos/Semis/Final) **antes** de jugarse, llegando a ~31
+   predicciones por partido para el reliability + ECE de la fase eliminatoria.
+
 Criterio de éxito declarado: el modelo es **prospectivamente válido** si su log-loss en
 32avos es ≤ al del benchmark *chalk* y su ECE de avance por ronda se mantiene < 0,10.
 
@@ -155,6 +160,27 @@ actualizar_elo(K=32) → construir_dataset_partidos → calibrar_parametros (nu/
 DixonColes(lambda).entrenar → entrenar_modelos_ml(tune) → evaluar_modelos(OOF) →
 elegir_predictor_final → simular_torneo(n=20000, semilla=2026)`. Las probabilidades de
 campeón/avance y las de 32avos son **deterministas** dado el Excel + la semilla.
+
+## 7. Pre-registro RODANTE (snapshots por ronda)
+
+Este documento (el **ancla**) congela el pronóstico antes de jugarse ningún KO, pero
+sólo contiene la P(1/X/2) por partido de **32avos** (los únicos cruces conocidos al
+congelar). Las rondas siguientes (Octavos→Final) recién se conocen cuando avanza cada
+equipo. Para validar la **calibración a nivel partido en toda la fase final** se usa un
+**pre-registro rodante**: en cada ventana ENTRE rondas —cuando los cruces de la ronda
+siguiente quedaron definidos por resultados **reales** y **antes** de jugarse su primer
+partido— se congela su P(1/X/2) con timestamp + hash.
+
+- **Script:** `scripts/snapshot_ronda.py` (modelo congelado idéntico al ancla: semilla
+  2026, K=32, nu/lambda por `calibrar_parametros`, Dixon-Coles a 90'). Detecta solo la
+  **próxima ronda pendiente con cruces reales** y escribe a `preregistro/rondas/`
+  (`snapshot_<ronda>_<timestamp>.csv` + `.json` con hashes). **No toca el ancla.**
+- **Cadencia:** tras cerrar 32avos → Octavos; tras Octavos → Cuartos; → Semis → Final.
+  Suma ~8+4+2+1 = 15 predicciones por partido a las 16 de 32avos (≈31 en total).
+- **Reglas:** congelar sólo con cruces REALES (no simulados) y con el **modelo sin
+  re-ajustar**; el valor del snapshot es el **timestamp que prueba el compromiso antes
+  del resultado** (los números son deterministas y reconstruibles, pero el sello no).
+- **Nomenclatura:** en el código `16avos` = **Octavos de final** (Ronda de 16).
 
 ---
 

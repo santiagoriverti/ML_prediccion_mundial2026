@@ -409,6 +409,14 @@ print(res["campeon"].head(12))
   en el Excel y comparar las predicciones congeladas (`preregistro/`) con lo observado
   usando el protocolo de §4 de `PREREGISTRO.md` (Brier/log-loss en 32avos, ECE de avance
   por ronda, benchmark *chalk*). **NO re-entrenar para validar**: el modelo queda fijo.
+- **Pre-registro RODANTE (snapshots por ronda):** el ancla sólo congela la P(1/X/2) por
+  partido de 32avos. Para validar la calibración a nivel partido en TODA la fase final,
+  correr `scripts/snapshot_ronda.py` en cada **ventana entre rondas** (cruces reales,
+  antes de jugarse): congela la P(1/X/2) de Octavos/Cuartos/Semis/Final a
+  `preregistro/rondas/` con timestamp + hash, **sin tocar el ancla**. Suma ~15
+  predicciones por partido (≈31 en total). Mismo modelo congelado; el valor es el
+  **timestamp**. Detalle en §7 de `PREREGISTRO.md`. (Nota: en el código `16avos` =
+  Octavos de final.)
 
 ## 12. Penales y prórroga en eliminatorias (2026-06-29)
 

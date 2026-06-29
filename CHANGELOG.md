@@ -28,6 +28,25 @@ consejos de apuestas.
 - **Estado de datos:** primeros **2 resultados de 32avos** cargados (Sudáfrica 0-1
   Canadá; Brasil 2-1 Japón), ambos definidos en los 90'. Pre-registro intacto (`4887f42`).
 
+## 2026-06-29 — Pre-registro rodante (snapshots por ronda)
+
+### Metodología (validación prospectiva)
+- Nuevo `scripts/snapshot_ronda.py`: congela la **P(1/X/2) por partido de la próxima
+  ronda de KO** (Octavos/Cuartos/Semis/Final) en la ventana **entre rondas** —cruces
+  reales, antes de jugarse—, con timestamp + hash, en `preregistro/rondas/`. **No toca
+  el ancla** (`preregistro/*.csv`).
+- Modelo **congelado idéntico al ancla** (semilla 2026, K=32, nu/lambda por
+  `calibrar_parametros`, Dixon-Coles a 90'). Detecta solo la ronda `proxima` con ambos
+  equipos definidos por resultados reales; avisa si la próxima ronda es 32avos (ya
+  cubierta por el ancla).
+- **Motivación:** el ancla sólo tiene la P(1/X/2) por partido de 32avos (16 cruces). El
+  rodante suma ~15 predicciones por partido (Octavos 8 + Cuartos 4 + Semis 2 + Final 1)
+  ⇒ ≈31 en total para el reliability + ECE de la fase final. El valor del snapshot es el
+  **timestamp** que prueba el compromiso antes del resultado (los números son deterministas).
+- Documentado en `PREREGISTRO.md` §7 (+ ítem 5 del protocolo §4) y `MEMORIA.md` §11.
+- Validado: con todos los 32avos cerrados, detecta **Octavos** con 8 cruces reales en
+  orden oficial; con 32avos a medio jugar, mantiene 32avos como próxima ronda.
+
 ## 2026-06-28 — Orden OFICIAL del árbol del bracket (16avos→final)
 
 ### Arreglo (bug de avance del cuadro)
