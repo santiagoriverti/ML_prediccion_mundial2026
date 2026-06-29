@@ -21,6 +21,9 @@ __pycache__/
 .venv/
 venv/
 
+# --- Prompts/artefactos locales (no versionar) ---
+PROMPT_CLAUDE_CHAT.md
+
 # --- Sistema ---
 .DS_Store
 Thumbs.db
