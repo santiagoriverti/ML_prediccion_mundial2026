@@ -1,7 +1,11 @@
 # MEMORIA DEL PROYECTO — ML_prediccion_mundial2026
 
 > Documento maestro para **retomar el proyecto desde cualquier sesión**.
-> Última actualización: **2026-06-28 (b)**. Cambio más reciente: **orden OFICIAL del
+> Última actualización: **2026-06-29**. Cambio más reciente: **PRE-REGISTRO
+> PROSPECTIVO de la fase final** (ver §11) — se congelaron todas las probabilidades de
+> eliminatorias ANTES de jugarse ningún partido de KO (commit y tag firmados +
+> GitHub Release con timestamp), para validarlas prospectivamente ronda por ronda y
+> blindar el estudio contra la crítica de overfitting retrospectivo. Cambio previo: **orden OFICIAL del
 > árbol del bracket** (`ORDEN_BRACKET_R32` + `_reordenar_bracket` en `simulate.py`):
 > el avance de 32avos→16avos→…→final usaba el orden de filas del Excel (≠ árbol) y
 > armaba mal los cruces; ahora reproduce el cuadro oficial FIFA (validado: 16avos =
@@ -360,3 +364,29 @@ print(res["campeon"].head(12))
 - El token **nunca** se escribió en archivos versionados ni en `.git/config`
   (se usó vía variable de entorno y un header efímero). Verificado.
 - `.gitignore` ya excluye `*.token`, `*.pat`, `.env*`, `secrets*.json`.
+
+## 11. Pre-registro prospectivo de la fase final (2026-06-29)
+
+- **Qué se hizo:** con la fase de grupos completa (72/72) y 0 resultados de KO
+  cargados, se **congelaron todas las probabilidades de eliminatorias** para validarlas
+  prospectivamente. Convierte el estudio de retrospectivo (sospechoso de overfitting)
+  en **prospectivo y pre-registrado** (argumento mucho más fuerte ante referees).
+- **Dónde vive:** carpeta [`preregistro/`](../preregistro/):
+  - `PREREGISTRO.md` — documento maestro: config congelada, predicciones, **protocolo
+    de validación fijado de antemano** (§4) y hashes SHA256 de integridad (§5).
+  - `prob_campeon.csv` (48), `prob_avance.csv` (por ronda), `prob_ko_por_partido.csv`
+    (P(1/X/2) de los 16 partidos de 32avos), `prob_grupos.csv`, `bracket_proyectado.csv`.
+  - `config_modelo.json` — semilla=2026, nu=0.26, lambda=4.0, predictor final
+    elo+rf+xgb, SHA256 del Excel fuente (`e9065ed9…a57389`).
+- **Regenerar (determinista):** `PYTHONUTF8=1 python scripts/gen_preregistro.py`.
+- **Inmutabilidad:** commit `4887f42` y **tag firmado** `preregistro-ko-2026-06-29`
+  (clave SSH ed25519) + **GitHub Release** con timestamp de servidor y los archivos
+  adjuntos como assets. La firma sale "Unverified" en GitHub hasta agregar la **clave
+  pública de firma** (`~/.ssh/id_ed25519_signing.pub`) en GitHub → *Settings ▸ SSH and
+  GPG keys ▸ New SSH key ▸ tipo "Signing Key"*.
+- **Top campeón congelado:** Argentina 12,3 % · Francia 11,6 % · España 7,8 % ·
+  Brasil 6,9 % · México 6,5 % · Alemania 5,7 % (las 48 en `prob_campeon.csv`).
+- **Próximo paso de validación:** a medida que se jueguen los 32avos, cargar resultados
+  en el Excel y comparar las predicciones congeladas (`preregistro/`) con lo observado
+  usando el protocolo de §4 de `PREREGISTRO.md` (Brier/log-loss en 32avos, ECE de avance
+  por ronda, benchmark *chalk*). **NO re-entrenar para validar**: el modelo queda fijo.
