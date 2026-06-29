@@ -3,6 +3,31 @@
 Formato: cambios agrupados por fecha. El proyecto entrega **probabilidades**, no
 consejos de apuestas.
 
+## 2026-06-29 — Penales y prórroga en eliminatorias
+
+### Funcionalidad (carga de resultados KO)
+- Nuevas columnas **`Pen 1` / `Pen 2`** en la hoja `Eliminatorias` para registrar la
+  **tanda de penales** cuando un KO termina empatado en los 90'/prórroga.
+- **Convención de carga:**
+  - *Definido en el alargue:* cargar el marcador con los goles del alargue incluidos
+    (ej. `2-1`); penales vacíos.
+  - *Definido por penales:* cargar el empate real (ej. `1-1`) **+ la tanda** en
+    `Pen 1`/`Pen 2` (ej. `4-2`). Los penales **sólo deciden quién avanza**; el marcador
+    de los 90' no se falsea (importa para validar el pre-registro, §11 de la memoria).
+  - *Empate sin tanda:* el modelo desempata por **fuerza** (Elo) — comportamiento previo.
+- **Implementación:** `data_loader` lee `Pen 1`/`Pen 2` **por nombre de columna**
+  (retrocompatible: si no existen, penales = `None`); `cargar_resultados_ko` ahora
+  devuelve `(g1, g2, pen1, pen2)`. Helper `simulate._ganador_ko` (goles → tanda →
+  fuerza) aplicado en los 3 sitios de resolución: Monte Carlo (`_una_corrida`),
+  `cuadro_completo_probable` y `probabilidades_eliminatorias`. El marcador muestra el
+  sufijo `(pen x-y)` cuando hubo tanda.
+- **No cambia el modelo:** los goles de KO no reentrenan Elo/Dixon-Coles (sólo la fase
+  de grupos lo hace); un KO únicamente fija el avance y descarta al eliminado.
+- **Validado:** empate `1-1` con tanda `3-5` hace avanzar al más débil (override del
+  Elo), marcador `1-1 (pen 3-5)`; sin tanda, gana el más fuerte (sin cambios).
+- **Estado de datos:** primeros **2 resultados de 32avos** cargados (Sudáfrica 0-1
+  Canadá; Brasil 2-1 Japón), ambos definidos en los 90'. Pre-registro intacto (`4887f42`).
+
 ## 2026-06-28 — Orden OFICIAL del árbol del bracket (16avos→final)
 
 ### Arreglo (bug de avance del cuadro)

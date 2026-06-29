@@ -341,7 +341,7 @@ def _precomputar(equipos, fixture, bracket, gen):
     # Cruces de 32avos parseados una sola vez
     r32 = bracket[bracket["ronda"].str.contains("32", na=False)].sort_values("partido")
     cruces_def, slots_terceros = [], []
-    fixed_ko = {}   # {partido: (goles_1, goles_2)} para resultados KO ya cargados
+    fixed_ko = {}   # {partido: (goles_1, goles_2, pen_1, pen_2)} de KO ya cargados
     for _, fila in r32.iterrows():
         s1 = _parse_slot(fila["slot_1"])
         s2 = _parse_slot(fila["slot_2"])
@@ -356,7 +356,12 @@ def _precomputar(equipos, fixture, bracket, gen):
         # el ganador avanza y el perdedor queda eliminado en TODAS las corridas.
         g1, g2 = fila.get("goles_1"), fila.get("goles_2")
         if pd.notna(g1) and pd.notna(g2):
-            fixed_ko[fila["partido"]] = (float(g1), float(g2))
+            p1, p2 = fila.get("pen_1"), fila.get("pen_2")
+            fixed_ko[fila["partido"]] = (
+                float(g1), float(g2),
+                float(p1) if pd.notna(p1) else None,
+                float(p2) if pd.notna(p2) else None,
+            )
 
     # Reordena los cruces al ORDEN OFICIAL del árbol del bracket (no el orden de filas
     # del Excel), para que el emparejamiento consecutivo de ganadores arme bien el cuadro.
@@ -444,16 +449,15 @@ def _una_corrida(ctx, gen, rng, ga_row, gb_row):
                 ganadores.append(e1); continue
             # Anfitrión en casa: fracción de la ventaja (no plena) si uno es sede.
             anf = FACTOR_LOCALIA_KO * (sede.get(e1, 0.0) - sede.get(e2, 0.0))
-            # ¿Resultado de 32avos ya cargado? -> hecho fijo (gana quien marcó más).
+            # ¿Resultado de 32avos ya cargado? -> hecho fijo. Gana quien marcó más;
+            # si empató en 90', decide la tanda de penales cargada, y si no hay
+            # penales, se resuelve por fuerza (comportamiento previo).
             fijo = fixed_ko.get(ids_r1[k]) if es_primera else None
             if fijo is not None:
-                g1f, g2f = fijo
-                if g1f > g2f:
-                    gan = e1
-                elif g2f > g1f:
-                    gan = e2
-                else:  # empate cargado (90'): se define por fuerza (prórroga/penales)
-                    gan = e1 if rng.random() < gen.prob_gana_a(e1, e2, anf) else e2
+                p1f, p2f = _pens_de(fijo)
+                gan = _ganador_ko(
+                    fijo[0], fijo[1], e1, e2, p1f, p2f,
+                    por_fuerza=lambda: e1 if rng.random() < gen.prob_gana_a(e1, e2, anf) else e2)
                 ganadores.append(gan); continue
             ga, gb = gen.muestrear(e1, e2, anf)
             if ga > gb:
@@ -656,6 +660,34 @@ def _prob_1x2_ko(dixon_coles, e1, e2, anf):
     return p1 / s, pX / s, p2 / s
 
 
+def _pens_de(t):
+    """(pen_1, pen_2) de una tupla KO ``(g1, g2[, pen_1, pen_2])``.
+
+    Devuelve ``(None, None)`` si la tupla no trae penales (compatibilidad con
+    tuplas viejas de 2 elementos).
+    """
+    if t is not None and len(t) >= 4:
+        return t[2], t[3]
+    return None, None
+
+
+def _ganador_ko(g1, g2, e1, e2, pen1=None, pen2=None, *, por_fuerza):
+    """Equipo que AVANZA en un KO con resultado cargado.
+
+    Decide por goles (90'+prórroga incluidos); si quedan empatados, decide la
+    **tanda de penales** (``pen1``/``pen2``) cuando está cargada; si no hay
+    penales, se resuelve ``por_fuerza()`` (callable que devuelve ``e1``/``e2``;
+    preserva el comportamiento previo). Devuelve ``e1`` o ``e2``.
+    """
+    if g1 > g2:
+        return e1
+    if g2 > g1:
+        return e2
+    if pen1 is not None and pen2 is not None and pen1 != pen2:
+        return e1 if pen1 > pen2 else e2
+    return por_fuerza()
+
+
 def probabilidades_eliminatorias(equipos, fixture, bracket, dixon_coles,
                                  resultados_ko=None):
     """Estado del cuadro de eliminatorias ronda por ronda, con probabilidades.
@@ -669,8 +701,9 @@ def probabilidades_eliminatorias(equipos, fixture, bracket, dixon_coles,
     La columna ``proxima`` marca la PRÓXIMA ronda pendiente (los partidos que
     todavía no se jugaron y ya tienen rival), pensada para imprimir "lo que viene".
 
-    ``resultados_ko``: dict ``{(ronda, partido): (g1, g2)}`` con goles KO cargados
-    de TODAS las rondas. Para 32avos también se toman de la hoja si faltan.
+    ``resultados_ko``: dict ``{(ronda, partido): (g1, g2[, pen1, pen2])}`` con goles
+    KO cargados de TODAS las rondas (penales opcionales para desempatar un 90'
+    igualado). Para 32avos también se toman de la hoja si faltan.
     Devuelve un DataFrame ordenado por ronda y partido.
     """
     gen = GeneradorGoles(dixon_coles, np.random.default_rng(0))
@@ -680,8 +713,8 @@ def probabilidades_eliminatorias(equipos, fixture, bracket, dixon_coles,
 
     # Resultados KO por (ronda, partido): los pasados + los 32avos de la hoja.
     res_ko = dict(resultados_ko or {})
-    for partido, (g1, g2) in ctx.get("fixed_ko", {}).items():
-        res_ko.setdefault(("32avos", int(partido)), (g1, g2))
+    for partido, vals in ctx.get("fixed_ko", {}).items():
+        res_ko.setdefault(("32avos", int(partido)), vals)
 
     nombres = ["32avos", "16avos", "Cuartos", "Semifinales", "Final"]
     cruces = _resolver_32avos(ctx)
@@ -701,16 +734,18 @@ def probabilidades_eliminatorias(equipos, fixture, bracket, dixon_coles,
             res = res_ko.get((ronda, partido))
             if res is not None:
                 g1, g2 = int(res[0]), int(res[1])
-                if g1 > g2:
-                    gan = e1
-                elif g2 > g1:
-                    gan = e2
-                else:  # empate cargado -> definición por fuerza (prórroga/penales)
-                    we = elo_esperado(rating.get(e1, 1500.0), rating.get(e2, 1500.0), anf)
-                    gan = e1 if we >= 0.5 else e2
+                pen1, pen2 = _pens_de(res)
+                # Empate en 90' -> decide la tanda cargada; si no hay, el más fuerte.
+                gan = _ganador_ko(
+                    g1, g2, e1, e2, pen1, pen2,
+                    por_fuerza=lambda: e1 if elo_esperado(
+                        rating.get(e1, 1500.0), rating.get(e2, 1500.0), anf) >= 0.5 else e2)
+                marcador = f"{g1}-{g2}"
+                if pen1 is not None and pen2 is not None:
+                    marcador += f" (pen {int(pen1)}-{int(pen2)})"
                 filas.append({"ronda": ronda, "partido": partido,
                               "equipo_1": e1, "equipo_2": e2, "estado": "jugado",
-                              "marcador": f"{g1}-{g2}", "ganador": gan,
+                              "marcador": marcador, "ganador": gan,
                               "p_gana_1": np.nan, "p_empate": np.nan,
                               "p_gana_2": np.nan, "proxima": False})
                 ganadores.append(gan)
@@ -810,14 +845,18 @@ def cuadro_completo_probable(equipos, fixture, bracket, dixon_coles):
             anf = FACTOR_LOCALIA_KO * (sede.get(e1, 0.0) - sede.get(e2, 0.0))
             fijo = fixed_ko.get(ids_r1[k]) if ridx == 0 else None
             we = elo_esperado(rating.get(e1, 1500.0), rating.get(e2, 1500.0), anf)
+            suf_pen = ""   # sufijo "(pen x-y)" para el marcador si hubo tanda
             if fijo is not None:   # resultado de KO ya cargado: es un hecho fijo
                 g1, g2 = int(fijo[0]), int(fijo[1])
-                if g1 > g2:
-                    gan, nota = e1, "(cargado)"
-                elif g2 > g1:
-                    gan, nota = e2, "(cargado)"
+                pen1, pen2 = _pens_de(fijo)
+                gan = _ganador_ko(g1, g2, e1, e2, pen1, pen2,
+                                  por_fuerza=lambda: e1 if we >= 0.5 else e2)
+                if g1 != g2:
+                    nota = "(cargado)"
+                elif pen1 is not None and pen2 is not None:
+                    suf_pen = f" (pen {int(pen1)}-{int(pen2)})"
+                    nota = f"(cargado; penales {int(pen1)}-{int(pen2)}: {gan})"
                 else:
-                    gan = e1 if we >= 0.5 else e2
                     nota = f"(cargado; penales: {gan})"
             else:
                 # Ganador = quien tiene mayor prob. de AVANZAR (gana en 90' o en la
@@ -837,7 +876,7 @@ def cuadro_completo_probable(equipos, fixture, bracket, dixon_coles):
                 nota = "(muy parejo)" if abs(pa1 - 0.5) < 0.05 else ""
             filas.append({"ronda": ronda, "partido": k + 1,
                           "equipo_1": e1, "equipo_2": e2,
-                          "marcador": f"{g1}-{g2}", "ganador": gan, "nota": nota})
+                          "marcador": f"{g1}-{g2}{suf_pen}", "ganador": gan, "nota": nota})
             ganadores.append(gan)
         actual = [(ganadores[i], ganadores[i + 1] if i + 1 < len(ganadores) else None)
                   for i in range(0, len(ganadores), 2)]

@@ -1,7 +1,18 @@
 # MEMORIA DEL PROYECTO — ML_prediccion_mundial2026
 
 > Documento maestro para **retomar el proyecto desde cualquier sesión**.
-> Última actualización: **2026-06-29**. Cambio más reciente: **PRE-REGISTRO
+> Última actualización: **2026-06-29**. Cambio más reciente: **soporte de PENALES en
+> eliminatorias** (columnas `Pen 1`/`Pen 2` en la hoja Eliminatorias) — ver §12. Un KO
+> que termina **empatado en los 90'/prórroga y se define por penales** ahora se carga
+> con el **marcador real** (ej. `1-1`) **+ la tanda** (`Pen 1`/`Pen 2`, ej. `4-2`): los
+> penales sólo deciden **quién avanza** sin falsear el marcador (clave para validar el
+> pre-registro, cuyo objetivo es el 1/X/2 de los 90'). Si el KO se define en el alargue,
+> se carga el marcador con los goles del alargue (sin penales). Implementado en
+> `data_loader` (lectura) + `simulate` (helper `_ganador_ko` aplicado en Monte Carlo,
+> cuadro y probabilidades por ronda); **no cambia el modelo** (los goles de KO no
+> reentrenan Elo/DC, sólo fijan el avance). **Primeros 2 KO ya cargados** (32avos):
+> Sudáfrica 0-1 **Canadá** y Brasil 2-1 Japón (**Brasil** avanza), ambos definidos sin
+> penales. Cambio previo: **PRE-REGISTRO
 > PROSPECTIVO de la fase final** (ver §11) — se congelaron todas las probabilidades de
 > eliminatorias ANTES de jugarse ningún partido de KO (commit y tag firmados +
 > GitHub Release con timestamp), para validarlas prospectivamente ronda por ronda y
@@ -50,9 +61,16 @@ se cargan nuevos resultados en el Excel y se reejecuta el notebook.
 - **48 selecciones**, 12 grupos (A–L). Confeds: UEFA 16, CAF 10, AFC 9,
   CONCACAF 6, CONMEBOL 6, OFC 1.
 - **FASE DE GRUPOS COMPLETA: 72/72 partidos cargados** (jun-2026). Empiezan las
-  eliminatorias: los 32avos ya están definidos (32 clasificados), 0 resultados de KO
-  cargados aún. A medida que se carguen goles en la hoja Eliminatorias, el cuadro y
-  las probabilidades por ronda avanzan solos.
+  eliminatorias: los 32avos ya están definidos (32 clasificados). **2 resultados de KO
+  cargados** (32avos): Sudáfrica 0-1 **Canadá** (partido 1) y Brasil 2-1 Japón
+  (**Brasil** avanza, partido 2), ambos definidos en los 90'. A medida que se carguen
+  goles en la hoja Eliminatorias, el cuadro y las probabilidades por ronda avanzan solos.
+- **(jun-2026) Penales/prórroga en KO** (ver §12 y el diccionario): la hoja
+  Eliminatorias tiene columnas **`Pen 1`/`Pen 2`**. Alargue → cargar el marcador con los
+  goles del alargue. Empate definido por penales → cargar el empate real + la tanda en
+  `Pen 1`/`Pen 2`; el código usa los penales sólo para desempatar quién avanza (sin
+  falsear el 90'). Si hay empate y no se carga la tanda, desempata por fuerza (Elo).
+  **Cargar un KO no reentrena el modelo**: sólo fija el avance y descarta al eliminado.
 - **(jun-2026) Bug de combinación de 32avos ARREGLADO**: la asignación de los 8
   mejores terceros usaba matching bipartito (factible pero NO oficial). Ahora usa la
   **tabla OFICIAL FIFA** (`src/tabla_terceros.py`, Anexo C, 495 combinaciones). El
@@ -193,7 +211,8 @@ Excel  ─► data_loader.cargar_datos()         → equipos, fixture, bracket
 | **Desempate de grupos = FIFA oficial** | Puntos → DG global → GF global → **head-to-head** entre empatados (pts, DG, GF) → fair-play/sorteo (azar). | El enunciado decía "head-to-head primero", pero la regla **oficial FIFA** aplica primero los criterios globales y recién después el H2H. Se implementó la oficial real. |
 | **8 mejores terceros** | Ranking por (pts, DG, GF) y asignación a los slots `3º X/Y/Z` del bracket por **matching bipartito** respetando la elegibilidad de cada slot. | Reproduce la regla FIFA usando los cruces que ya trae la hoja `Eliminatorias`. |
 | **Cuadro post-32avos** | Sólo los 32avos están definidos en el Excel; las rondas siguientes se arman como **árbol binario** en el orden listado. | La hoja deja en blanco 16avos→Final. Es adaptable si se completan esos slots. |
-| **Knockouts: empate** | Se resuelve por **fuerza** (prob. Elo), no 50/50, simulando prórroga/penales. | Más realista que una moneda. |
+| **Knockouts: empate** | En partidos **simulados/proyectados** se resuelve por **fuerza** (prob. Elo), no 50/50, modelando prórroga/penales. En un KO **cargado** que terminó empatado, si hay tanda en `Pen 1`/`Pen 2` **decide la tanda** (override del Elo); si no, fuerza. | Más realista que una moneda; y respeta el resultado real de la tanda cuando se conoce (un débil puede ganar por penales). |
+| **Penales: marcador real + tanda aparte** | El empate de los 90'/prórroga se carga en `Goles 1`/`Goles 2` y la tanda en `Pen 1`/`Pen 2`. La tanda **sólo desempata quién avanza**, no altera el marcador. Helper `_ganador_ko` aplicado en los 3 sitios de resolución (Monte Carlo, `cuadro_completo_probable`, `probabilidades_eliminatorias`). | Permite avanzar al ganador real **sin** corromper el resultado 1/X/2 de los 90' que valida el pre-registro (§11). Los goles de KO no reentrenan el modelo. |
 | **3 features nuevas (DT, clasificatoria, top-5)** | Datos **curados** (estimaciones ~early-2026), no oficiales. El modelo usa diferencias A-B, robustas a errores chicos. Clasificatoria = %Pts × dificultad de confederación (ponderación pedida). | El Excel no traía estos datos; aportan señal ordinal (mejor DT / mejor clasificatoria / más jugadores de elite). |
 | **Zoo de ML + auto-tuning + top-3 blend** | logit/RF/ExtraTrees/GBM/HistGBM + XGBoost/LightGBM (opcionales). Hiperparámetros por `RandomizedSearchCV`. Calibración sigmoide consistente entre OOF y modelos finales. | "Modelos avanzados" + no apostar a uno solo. Con N≈56 el núcleo Elo/DC suele liderar; el blend lo combina con el mejor ML de forma data-driven. |
 | **Predictor final = mejor combinación medida** | `elegir_predictor_final` compara por log-loss OOF el **blend top-3** vs un **blend diverso** (todos los modelos base ∝ 1/log_loss) y usa el ganador para el pronóstico 1/X/2. | Los 3 mejores individuales suelen ser modelos **correlacionados** (p.ej. 3 árboles); un blend diverso (Elo+DC+lineal+árboles+boosting) reduce varianza y mide mejor. Data-driven, no asume cuál gana. |
@@ -390,3 +409,36 @@ print(res["campeon"].head(12))
   en el Excel y comparar las predicciones congeladas (`preregistro/`) con lo observado
   usando el protocolo de §4 de `PREREGISTRO.md` (Brier/log-loss en 32avos, ECE de avance
   por ronda, benchmark *chalk*). **NO re-entrenar para validar**: el modelo queda fijo.
+
+## 12. Penales y prórroga en eliminatorias (2026-06-29)
+
+- **Qué se agregó:** columnas **`Pen 1` / `Pen 2`** en la hoja `Eliminatorias` para
+  registrar la tanda de penales cuando un KO termina **empatado en los 90'/prórroga**.
+- **Cómo cargar (regla):**
+  - *Definido en el alargue:* cargar el **marcador final con los goles del alargue**
+    (ej. `2-1`). Avanza el equipo con más goles. Penales vacíos.
+  - *Definido por penales:* cargar el **empate real** en `Goles 1`/`Goles 2` (ej. `1-1`)
+    **y la tanda** en `Pen 1`/`Pen 2` (ej. `4-2`). El marcador de 90' no se falsea.
+  - *Empate sin tanda cargada:* el modelo desempata por **fuerza** (Elo) — puede
+    equivocar si ganó el más débil; por eso conviene **siempre** cargar la tanda.
+- **Dónde vive la lógica:**
+  - `data_loader.construir_bracket` y `data_loader.cargar_resultados_ko` leen `Pen 1`/
+    `Pen 2` por **nombre de columna** (no por posición → retrocompatible; si la columna
+    no existe, penales = `None`). `cargar_resultados_ko` devuelve
+    `{(ronda, partido): (g1, g2, pen1, pen2)}`.
+  - `simulate._ganador_ko(g1, g2, e1, e2, pen1, pen2, por_fuerza=…)` centraliza el
+    desempate: goles → tanda → `por_fuerza()` (fallback, comportamiento previo).
+    Aplicado en los **3 sitios** de resolución: Monte Carlo (`_una_corrida`),
+    `cuadro_completo_probable` y `probabilidades_eliminatorias`. El marcador de salida
+    muestra el sufijo `(pen x-y)` cuando hubo tanda.
+- **Impacto en el modelo: NINGUNO.** Los goles de KO **no reentrenan** Elo/Dixon-Coles
+  (eso se hace sólo con la fase de grupos en `actualizar_elo` + `construir_dataset_partidos`).
+  Un resultado de KO únicamente **fija quién avanza** y descarta al eliminado. Por eso
+  prórroga vs penales sólo afecta *quién pasa de ronda*, nunca los coeficientes ni las
+  probabilidades 1/X/2 de otros partidos.
+- **Validado:** con un empate `1-1` y tanda `3-5`, avanza el equipo más **débil**
+  (Paraguay sobre Alemania), overrideando el Elo, y el marcador sale `1-1 (pen 3-5)`.
+  Sin tanda, ese mismo empate lo gana el más fuerte (comportamiento previo intacto).
+- **Pre-registro:** no se re-generó (sigue congelado en `4887f42`). Esta mejora no
+  altera la salida con los datos actuales (los 2 KO cargados se definieron sin penales);
+  sólo cambia el avance cuando una tanda real contradiga al favorito.

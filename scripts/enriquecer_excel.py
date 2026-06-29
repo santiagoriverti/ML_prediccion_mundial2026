@@ -268,6 +268,13 @@ def main():
 
     # --- 4) Eliminatorias: slots 1o/2o -> formula contra Posiciones ---
     ws = wb["Eliminatorias"]
+    # Asegurar columnas Pen 1 / Pen 2 (tanda de penales) al final, idempotente.
+    # Header en fila 2. Sólo se usan para desempatar un KO igualado en los 90'.
+    hdr = {ws.cell(2, c).value: c for c in range(1, ws.max_column + 1)}
+    if "Pen 1" not in hdr:
+        c1 = ws.max_column + 1
+        ws.cell(2, c1, "Pen 1")
+        ws.cell(2, c1 + 1, "Pen 2")
     n_form = 0
     for r in range(3, ws.max_row + 1):
         slot1 = ws.cell(r, 9).value   # col I

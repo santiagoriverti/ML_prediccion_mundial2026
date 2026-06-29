@@ -294,6 +294,8 @@ def construir_bracket(xls: pd.ExcelFile) -> pd.DataFrame:
     cols = {str(c).strip().lower(): i for i, c in enumerate(eli.columns)}
     i_s1 = cols.get("slot 1", 2)
     i_s2 = cols.get("slot 2", 5)
+    i_p1 = cols.get("pen 1")   # columna opcional de penales (por nombre)
+    i_p2 = cols.get("pen 2")
     b = pd.DataFrame()
     b["ronda"] = _col(eli, 0).map(_norm_texto)
     b["partido"] = pd.to_numeric(_col(eli, 1), errors="coerce")
@@ -301,6 +303,10 @@ def construir_bracket(xls: pd.ExcelFile) -> pd.DataFrame:
     b["goles_1"] = pd.to_numeric(_col(eli, 3), errors="coerce")
     b["goles_2"] = pd.to_numeric(_col(eli, 4), errors="coerce")
     b["slot_2"] = _col(eli, i_s2).map(_norm_texto)
+    # Penales (tanda): sólo se usan para desempatar un KO que terminó igualado
+    # en los 90'/prórroga. Si la columna no existe en el Excel, quedan NaN.
+    b["pen_1"] = pd.to_numeric(_col(eli, i_p1), errors="coerce") if i_p1 is not None else np.nan
+    b["pen_2"] = pd.to_numeric(_col(eli, i_p2), errors="coerce") if i_p2 is not None else np.nan
     b["notas"] = _col(eli, 6).map(_norm_texto)
     # Conservar solo filas que representan un cruce real (tienen ambos slots)
     b = b[b["slot_1"].notna() & b["slot_2"].notna()].reset_index(drop=True)
@@ -337,14 +343,23 @@ def cargar_resultados_ko(fuente) -> dict:
 
     A diferencia de ``construir_bracket`` (que sólo conserva las filas con ambos
     slots, es decir los 32avos), esto recorre TODAS las rondas (32avos…Final) y
-    devuelve ``{(ronda, partido): (goles_1, goles_2)}`` para las filas con ambos
-    goles presentes. Permite seguir el cuadro ronda por ronda a medida que se
-    cargan resultados de eliminatorias.
+    devuelve ``{(ronda, partido): (goles_1, goles_2, pen_1, pen_2)}`` para las
+    filas con ambos goles presentes (``pen_1``/``pen_2`` son ``None`` si no hubo
+    tanda de penales cargada). Permite seguir el cuadro ronda por ronda a medida
+    que se cargan resultados de eliminatorias.
+
+    Convención: ``goles_1``/``goles_2`` es el marcador al final de los 90'+prórroga
+    (los goles del alargue cuentan). Si quedó empatado y se definió por penales,
+    cargar la tanda en ``Pen 1``/``Pen 2``: sólo se usan para decidir quién avanza
+    cuando los goles empatan, sin falsear el marcador (útil para validar el
+    pre-registro, cuyo objetivo es el resultado 1/X/2 de los 90').
     """
     xls = _abrir_libro(fuente)
     eli = _leer_hoja(xls, "Eliminatorias")
     if eli is None:
         return {}
+    cols = {str(c).strip().lower(): i for i, c in enumerate(eli.columns)}
+    i_p1, i_p2 = cols.get("pen 1"), cols.get("pen 2")
     res = {}
     for _, fila in eli.iterrows():
         ronda = _clave_ronda_ko(_col_fila(fila, 0))
@@ -353,7 +368,13 @@ def cargar_resultados_ko(fuente) -> dict:
         g2 = pd.to_numeric(_col_fila(fila, 4), errors="coerce")
         if ronda is None or pd.isna(partido) or pd.isna(g1) or pd.isna(g2):
             continue
-        res[(ronda, int(partido))] = (float(g1), float(g2))
+        p1 = pd.to_numeric(_col_fila(fila, i_p1), errors="coerce") if i_p1 is not None else np.nan
+        p2 = pd.to_numeric(_col_fila(fila, i_p2), errors="coerce") if i_p2 is not None else np.nan
+        res[(ronda, int(partido))] = (
+            float(g1), float(g2),
+            float(p1) if pd.notna(p1) else None,
+            float(p2) if pd.notna(p2) else None,
+        )
     return res
 
 

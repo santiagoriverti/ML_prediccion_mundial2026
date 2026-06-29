@@ -27,10 +27,12 @@ Lectura robusta del Excel (header en fila 2, claves por `País`, tolerancia a Na
   - `equipos` (DataFrame maestro por selección), `fixture` (72 partidos de grupo),
     `bracket` (cruces del cuadro final), `grupos` (dict grupo→países), `meta` (conteos).
 - `cargar_resultados_ko(fuente) -> dict` — lee la hoja `Eliminatorias` **completa** y
-  devuelve `{(ronda, partido): (goles_1, goles_2)}` de TODAS las rondas (32avos…Final)
-  con ambos goles cargados. Lo consume `simulate.probabilidades_eliminatorias` para
-  avanzar el cuadro ronda por ronda. (`construir_bracket` sólo conserva los 32avos,
-  que tienen slots; esta función recupera además los resultados de rondas profundas.)
+  devuelve `{(ronda, partido): (goles_1, goles_2, pen_1, pen_2)}` de TODAS las rondas
+  (32avos…Final) con ambos goles cargados (`pen_1`/`pen_2` = tanda de penales, `None` si
+  no hubo). Lo consume `simulate.probabilidades_eliminatorias` para avanzar el cuadro
+  ronda por ronda. (`construir_bracket` sólo conserva los 32avos, que tienen slots; esta
+  función recupera además los resultados de rondas profundas.) Las columnas `Pen 1`/
+  `Pen 2` se leen **por nombre** (retrocompatible: si no existen, penales = `None`).
 - Internas: `construir_equipos` une **Selecciones + Historial + DTs + Clasificatorias
   + Predictores_país** por `País`; `construir_fixture` (marca `jugado` = ambos goles
   presentes); `construir_bracket` (lee `Eliminatorias`: `slot_1/slot_2` posicionales,
@@ -117,10 +119,14 @@ Actualización de Elo y simulación Monte Carlo del torneo.
   — **Monte Carlo**. Devuelve dict con DataFrames `campeon`, `avance`, `grupos`.
   - Optimizado: **precomputa** estructuras (`_precomputar`) y **vectoriza** el
     muestreo de goles de los partidos de grupo pendientes. ~10 s / 20.000 corridas.
-  - **Fija los resultados de eliminatorias ya cargados** (`fixed_ko`): un 32avos con
-    goles cargados es un hecho fijo y el perdedor queda eliminado en todas las corridas.
+  - **Fija los resultados de eliminatorias ya cargados** (`fixed_ko`, ahora
+    `(g1, g2, pen1, pen2)`): un 32avos con goles cargados es un hecho fijo y el perdedor
+    queda eliminado en todas las corridas. Si empató en 90' y hay tanda cargada, **la
+    tanda decide** quién avanza.
   - `avance` ya **no** trae la columna duplicada de campeón (sólo `prob_campeon`).
 - Internas: `GeneradorGoles` (muestreo + `prob_gana_a` para penales),
+  `_ganador_ko` (desempate de un KO cargado: goles → tanda `Pen 1`/`Pen 2` → fuerza),
+  `_pens_de` (extrae los penales de la tupla KO, retrocompatible),
   `_orden_grupo` (**desempate oficial FIFA**: pts → DG → GF globales → head-to-head),
   `_asignar_terceros` (**tabla OFICIAL FIFA** de los 8 mejores terceros, vía
   `tabla_terceros.TABLA_TERCEROS`; fallback voraz), `_resolver_32avos`, `_prob_1x2_ko`,
@@ -130,7 +136,8 @@ Actualización de Elo y simulación Monte Carlo del torneo.
   de filas del Excel) en `_precomputar`, así el emparejamiento consecutivo de ganadores
   arma bien 16avos→…→final. Cada cruce se identifica por sus slots de posición (1ºX/2ºX).
 - **Eliminatorias = localía moderada** para anfitriones (`FACTOR_LOCALIA_KO=0.3`);
-  empates resueltos por fuerza (prórroga/penales).
+  empates simulados resueltos por fuerza (prórroga/penales). En un KO **cargado** que
+  terminó empatado, si hay tanda en `Pen 1`/`Pen 2` decide la tanda; si no, la fuerza.
 - `bracket_mas_probable(...)` — cuadro de **32avos** del escenario más probable
   (determinista, nombres de selección, sin duplicados).
 - `cuadro_completo_probable(...)` — juega el **camino más probable HASTA LA FINAL**

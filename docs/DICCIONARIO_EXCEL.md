@@ -109,7 +109,7 @@ posiciones con el **desempate oficial FIFA** dentro de la simulación.
 
 ### `Eliminatorias` (34) — ACÁ CARGÁS RESULTADOS DE LA FASE FINAL
 `Ronda` · `Partido` · `Equipo 1` · **`Goles 1`** · **`Goles 2`** · `Equipo 2` ·
-`Notas` · `Sede` · **`Slot 1`** · **`Slot 2`**.
+`Notas` · `Sede` · **`Slot 1`** · **`Slot 2`** · **`Pen 1`** · **`Pen 2`**.
 - **`Equipo 1` / `Equipo 2`** ahora muestran el **nombre de selección proyectado**
   (escenario más probable, de `bracket_mas_probable`). Es una proyección que cambia
   al recargar resultados; los partidos de grupo en curso aún no fijan los cruces.
@@ -120,13 +120,31 @@ posiciones con el **desempate oficial FIFA** dentro de la simulación.
   binario en código).
 - Cuando empiece la fase final, cargá `Goles 1` / `Goles 2` igual que en grupos.
 
+#### Cómo cargar prórroga y penales (IMPORTANTE en eliminatorias)
+En un KO **siempre avanza alguien**: el que avanza = el que tiene **más goles** en
+`Goles 1`/`Goles 2`. Dos casos especiales:
+- **Se define en la prórroga (alargue):** cargá el **marcador final con los goles del
+  alargue incluidos**. Ej.: 1-1 en los 90' y gana 2-1 en el alargue → cargá `2-1`.
+  Avanza solo el equipo correcto; no hay nada especial que hacer.
+- **Termina empatado y se define por penales:** cargá el **empate real** en
+  `Goles 1`/`Goles 2` (ej. `1-1`) **y la tanda** en **`Pen 1` / `Pen 2`** (ej. `4-2`).
+  El código usa los penales **sólo para decidir quién avanza cuando los goles
+  empatan**; el marcador de los 90' queda intacto (eso importa para validar el
+  pre-registro, cuyo objetivo es el resultado 1/X/2 de los 90'). Si dejás `Pen 1`/`Pen 2`
+  vacías ante un empate, el modelo desempata por **fuerza** (Elo) — puede equivocar al
+  ganador si la tanda la ganó el más débil, así que **cargá la tanda**.
+- **No cambia el modelo:** los goles de KO **no reentrenan** Elo/Dixon-Coles (eso se
+  hace sólo con la fase de grupos). Un resultado de KO únicamente **fija quién avanza**
+  y baja a los eliminados; por eso prórroga vs penales sólo afecta *quién pasa de ronda*.
+
 ---
 
 ## Checklist para actualizar el pronóstico
 
 1. Abrir `Mundial_2026_fuente_datos.xlsx`.
 2. En `Fixture_Grupos`: completar `Goles A` y `Goles B` de los partidos jugados.
-3. (Si aplica) en `Eliminatorias`: completar `Goles 1` / `Goles 2`.
+3. (Si aplica) en `Eliminatorias`: completar `Goles 1` / `Goles 2` (alargue incluido)
+   y, si hubo tanda, `Pen 1` / `Pen 2`.
 4. Guardar, `git add`, `git commit`, `git push` del Excel.
 5. Reejecutar el notebook en Colab (*Ejecutar todo*). Listo: el rating se actualiza
    con los nuevos resultados y los partidos pendientes se vuelven a simular.
