@@ -3,6 +3,30 @@
 Formato: cambios agrupados por fecha. El proyecto entrega **probabilidades**, no
 consejos de apuestas.
 
+## 2026-07-04 — 32avos completos + primer pre-registro rodante
+
+### Datos
+- **32avos de final COMPLETOS (16/16)**, cargados al Excel entre el 30-jun y el 04-jul
+  vía upload web (commits `2ab6d62`…`bec1f20`). Clasificados a Octavos: Paraguay,
+  Canadá, Marruecos, Noruega, Francia, México, Inglaterra, Bélgica, Estados Unidos,
+  España, Portugal, Suiza, Egipto, Argentina, Colombia, Brasil. 3 definidos por
+  penales: Alemania 1-1 Paraguay (pen 3-4), Países Bajos 1-1 Marruecos (pen 2-3),
+  Australia 1-1 Egipto (pen 2-4).
+
+### Metodología (pre-registro rodante)
+- Primera corrida real de `scripts/snapshot_ronda.py`: detectó **Octavos de final**
+  (8 partidos) como próxima ronda con cruces reales y congeló su P(1/X/2)
+  (`nu`=0,26, `lambda_prior`=4,0, semilla 2026) en
+  `preregistro/rondas/snapshot_16avos_20260704T041119Z.{csv,json}`.
+- Commit `ab1f544` pusheado a `origin/main` (2026-07-04 ~04:11 UTC), **antes** de
+  jugarse Octavos — el timestamp de GitHub prueba el compromiso prospectivo. El
+  ancla (`preregistro/*.csv`, commit `4887f42`) no se modificó.
+- Detalle completo en `docs/MEMORIA.md` §13.
+
+### Pendiente
+- Reejecutar el pipeline/notebook con los 16 resultados de 32avos para actualizar el
+  pronóstico de campeón (el vigente en la memoria es pre-32avos).
+
 ## 2026-06-29 — Penales y prórroga en eliminatorias
 
 ### Funcionalidad (carga de resultados KO)

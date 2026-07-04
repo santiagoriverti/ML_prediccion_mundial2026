@@ -1,7 +1,25 @@
 # MEMORIA DEL PROYECTO — ML_prediccion_mundial2026
 
 > Documento maestro para **retomar el proyecto desde cualquier sesión**.
-> Última actualización: **2026-06-29**. Cambio más reciente: **soporte de PENALES en
+> Última actualización: **2026-07-04**. Cambio más reciente: **32avos de final
+> COMPLETOS (16/16)** — los 14 resultados que faltaban se cargaron al Excel entre el
+> 30-jun y el 04-jul (commits `2ab6d62`…`bec1f20`, subidos vía upload web, sin
+> actualizar esta memoria en el momento). 3 definidos por penales: Alemania 1-1
+> **Paraguay** (pen 3-4), Países Bajos 1-1 **Marruecos** (pen 2-3), Australia 1-1
+> **Egipto** (pen 2-4). Con la ronda cerrada se corrió **por primera vez el
+> pre-registro RODANTE** (`scripts/snapshot_ronda.py`, ver §7 de `PREREGISTRO.md`):
+> detectó que la próxima ronda con cruces reales es **Octavos de final** (16avos en
+> el código, 8 partidos) y congeló su P(1/X/2) en
+> `preregistro/rondas/snapshot_16avos_20260704T041119Z.{csv,json}`
+> (nu=0.26, lambda=4.0, semilla 2026). Commit `ab1f544`, **pusheado a
+> `origin/main`** el 2026-07-04 ~04:11 UTC — el timestamp de GitHub es la prueba de
+> que se congeló ANTES de jugarse Octavos. **No se tocó el ancla** (`preregistro/*.csv`,
+> sigue en `4887f42`). Cruces de Octavos: Paraguay-Francia, Canadá-Marruecos,
+> Portugal-España, EEUU-Bélgica, Brasil-Noruega, México-Inglaterra, Argentina-Egipto,
+> Suiza-Colombia (ver §13). **Pendiente:** no se reejecutó el notebook/pipeline
+> completo con los 16 resultados nuevos de 32avos (no hay `outputs/` regenerados ni
+> pronóstico de campeón actualizado post-32avos; el de §2 sigue siendo el de
+> pre-32avos). Cambio previo: **soporte de PENALES en
 > eliminatorias** (columnas `Pen 1`/`Pen 2` en la hoja Eliminatorias) — ver §12. Un KO
 > que termina **empatado en los 90'/prórroga y se define por penales** ahora se carga
 > con el **marcador real** (ej. `1-1`) **+ la tanda** (`Pen 1`/`Pen 2`, ej. `4-2`): los
@@ -10,9 +28,7 @@
 > se carga el marcador con los goles del alargue (sin penales). Implementado en
 > `data_loader` (lectura) + `simulate` (helper `_ganador_ko` aplicado en Monte Carlo,
 > cuadro y probabilidades por ronda); **no cambia el modelo** (los goles de KO no
-> reentrenan Elo/DC, sólo fijan el avance). **Primeros 2 KO ya cargados** (32avos):
-> Sudáfrica 0-1 **Canadá** y Brasil 2-1 Japón (**Brasil** avanza), ambos definidos sin
-> penales. Cambio previo: **PRE-REGISTRO
+> reentrenan Elo/DC, sólo fijan el avance). Cambio previo: **PRE-REGISTRO
 > PROSPECTIVO de la fase final** (ver §11) — se congelaron todas las probabilidades de
 > eliminatorias ANTES de jugarse ningún partido de KO (commit y tag firmados +
 > GitHub Release con timestamp), para validarlas prospectivamente ronda por ronda y
@@ -60,11 +76,16 @@ se cargan nuevos resultados en el Excel y se reejecuta el notebook.
 
 - **48 selecciones**, 12 grupos (A–L). Confeds: UEFA 16, CAF 10, AFC 9,
   CONCACAF 6, CONMEBOL 6, OFC 1.
-- **FASE DE GRUPOS COMPLETA: 72/72 partidos cargados** (jun-2026). Empiezan las
-  eliminatorias: los 32avos ya están definidos (32 clasificados). **2 resultados de KO
-  cargados** (32avos): Sudáfrica 0-1 **Canadá** (partido 1) y Brasil 2-1 Japón
-  (**Brasil** avanza, partido 2), ambos definidos en los 90'. A medida que se carguen
-  goles en la hoja Eliminatorias, el cuadro y las probabilidades por ronda avanzan solos.
+- **FASE DE GRUPOS COMPLETA: 72/72 partidos cargados** (jun-2026).
+- **(04-jul-2026) 32AVOS DE FINAL COMPLETOS (16/16)**. Los 16 clasificados a Octavos:
+  Paraguay, Francia, Canadá, Marruecos, Portugal, España, Estados Unidos, Bélgica,
+  Brasil, Noruega, México, Inglaterra, Argentina, Egipto, Suiza, Colombia. 3 definidos
+  por penales (marcador real + tanda en `Pen 1`/`Pen 2`, ver §12): Alemania 1-1
+  **Paraguay** (pen 3-4), Países Bajos 1-1 **Marruecos** (pen 2-3), Australia 1-1
+  **Egipto** (pen 2-4). Detalle completo en §13. A medida que se carguen goles de
+  Octavos en la hoja Eliminatorias, el cuadro y las probabilidades por ronda avanzan solos.
+- **(04-jul-2026) Pre-registro RODANTE: primer snapshot corrido** (Octavos de final,
+  8 partidos), congelado y pusheado ANTES de jugarse esa ronda. Ver §13.
 - **(jun-2026) Penales/prórroga en KO** (ver §12 y el diccionario): la hoja
   Eliminatorias tiene columnas **`Pen 1`/`Pen 2`**. Alargue → cargar el marcador con los
   goles del alargue. Empate definido por penales → cargar el empate real + la tanda en
@@ -134,12 +155,14 @@ se cargan nuevos resultados en el Excel y se reejecuta el notebook.
   a los ganadores según `ORDEN_BRACKET_R32` (orden real del árbol FIFA), no el orden de
   filas del Excel. Validado contra el bracket oficial (16avos: Argentina vs ganador de
   Australia-Egipto; Suiza vs Colombia; Alemania vs Francia; etc.).
-- Pronóstico actual (top campeón, **72 resultados = grupos completos**, **árbol del
-  bracket corregido**, localía KO 0.3): **Argentina ~10,1 % · Francia ~9,5 % · España
-  ~6,6 % · México ~6,2 % · Brasil ~6,2 % · Alemania ~5,5 %** … (suma = 1,0). El predictor
-  final 1/X/2 sigue siendo el **blend de los 3 mejores** (elo+rf+xgb); `nu`=0,26,
-  `lambda_prior`=4. (Los números cambiaron vs el cuadro viejo porque los caminos del
-  bracket estaban mal armados.)
+- Pronóstico (top campeón) **DESACTUALIZADO — corresponde a antes de cerrar los
+  32avos** (72 resultados = grupos completos, árbol del bracket corregido, localía KO
+  0.3): **Argentina ~10,1 % · Francia ~9,5 % · España ~6,6 % · México ~6,2 % · Brasil
+  ~6,2 % · Alemania ~5,5 %** … (suma = 1,0; predictor final blend top-3 elo+rf+xgb,
+  `nu`=0,26, `lambda_prior`=4). **Con los 32avos ya completos (16/16, ver §13) este
+  número cambió** (p.ej. Alemania quedó eliminada por penales) pero **no se
+  reejecutó el pipeline todavía** para obtener el pronóstico nuevo — próximo paso
+  pendiente (§9).
   **Importante:** el predictor final es **data-driven y cambia con los datos** — a
   veces gana el ensemble fijo (Elo/DC pesan más), a veces el blend top-3; no asumir
   uno fijo. Se recalcula en cada corrida.
@@ -331,9 +354,15 @@ print(res["campeon"].head(12))
 
 ## 9. Pendientes / mejoras posibles
 
-- Cargar el resto de la fecha 3 de grupos (faltan 16 partidos) a medida que se jueguen.
-- Completar la hoja **`Eliminatorias`** (*Goles 1*/*Goles 2*) con los resultados de la
-  fase final cuando empiece: los equipos eliminados se descartan solos (KO fijado).
+- **(urgente) Reejecutar el pipeline/notebook con los 32avos completos (16/16)** para
+  obtener el pronóstico de campeón actualizado (el de §2 es pre-32avos). El Excel y el
+  código ya están listos; sólo falta correr `Ejecutar todo` en Colab o el snippet de §7.
+- **Cargar los resultados de Octavos de final** en la hoja `Eliminatorias` a medida que
+  se jueguen (ya está congelada su P(1/X/2) pre-partido en §13, para validación).
+  Después de cargarlos: commit + push + correr `scripts/snapshot_ronda.py` de nuevo
+  para congelar Cuartos (protocolo del pre-registro rodante, §11/§13).
+- (Hecho jun/jul-2026) Cargado el resto de la fecha 3 de grupos y **los 32avos
+  completos** — ver §13.
 - (Hecho jun-2026) Cargados **Puntos/Ranking FIFA** de las 11 selecciones que faltaban
   → **0 imputados**. Mejoró el log-loss CV (logit 1.004→0.922, gbm 1.344→1.207) y
   recalibró la fuerza de esos equipos y sus rivales. Los puntos son estimados del rank.
@@ -450,3 +479,44 @@ print(res["campeon"].head(12))
 - **Pre-registro:** no se re-generó (sigue congelado en `4887f42`). Esta mejora no
   altera la salida con los datos actuales (los 2 KO cargados se definieron sin penales);
   sólo cambia el avance cuando una tanda real contradiga al favorito.
+
+## 13. Cierre de 32avos + primer snapshot rodante (2026-07-04)
+
+- **32avos de final COMPLETOS (16/16).** Las 14 goleadas/resultados que faltaban
+  (después de los 2 iniciales del 29-jun: Sudáfrica-Canadá y Brasil-Japón) se cargaron
+  al Excel entre el 30-jun y el 04-jul vía "Add files via upload" (commits `2ab6d62`,
+  `131ac46`, `7bfd921`, `84579cd`, `c968111`, `5030f0c`, `bec1f20`) **sin actualizar
+  esta memoria en el momento** — de ahí el desfasaje que se corrige en esta sección.
+  Clasificados a Octavos: **Paraguay** (v. Alemania, pen 3-4), **Canadá** (v.
+  Sudáfrica), **Marruecos** (v. Países Bajos, pen 2-3), **Noruega** (v. Costa de
+  Marfil), **Francia** (v. Suecia), **México** (v. Ecuador), **Inglaterra** (v. RD
+  Congo), **Bélgica** (v. Senegal), **Estados Unidos** (v. Bosnia), **España** (v.
+  Austria), **Portugal** (v. Croacia), **Suiza** (v. Argelia), **Egipto** (v.
+  Australia, pen 2-4), **Argentina** (v. Cabo Verde), **Colombia** (v. Ghana),
+  **Brasil** (v. Japón).
+- **Primer pre-registro RODANTE ejecutado** (`scripts/snapshot_ronda.py`, ver §11):
+  con los 32avos cerrados, detectó automáticamente que la próxima ronda con cruces
+  reales es **Octavos de final** (`16avos` en el código) y congeló su P(1/X/2):
+
+  | Partido | Cruce | P(1) | P(X) | P(2) |
+  |---|---|---|---|---|
+  | 1 | Paraguay – Francia | 0,188 | 0,237 | 0,575 |
+  | 2 | Canadá – Marruecos | 0,404 | 0,254 | 0,342 |
+  | 3 | Portugal – España | 0,362 | 0,249 | 0,390 |
+  | 4 | Estados Unidos – Bélgica | 0,376 | 0,227 | 0,397 |
+  | 5 | Brasil – Noruega | 0,518 | 0,222 | 0,259 |
+  | 6 | México – Inglaterra | 0,439 | 0,245 | 0,316 |
+  | 7 | Argentina – Egipto | 0,480 | 0,253 | 0,267 |
+  | 8 | Suiza – Colombia | 0,390 | 0,276 | 0,334 |
+
+  Modelo congelado: `nu`=0,26, `lambda_prior`=4,0, `K`=32, semilla 2026 (mismos que el
+  ancla; Dixon-Coles a 90'). Archivos:
+  `preregistro/rondas/snapshot_16avos_20260704T041119Z.csv` (+ `.json` con hashes
+  SHA256 del Excel y del CSV). **Commit `ab1f544`, pusheado a `origin/main`** el
+  2026-07-04 ~04:11 UTC (antes de jugarse Octavos) — el timestamp del servidor de
+  GitHub es la prueba del compromiso prospectivo. **El ancla no se tocó**
+  (`preregistro/*.csv` sigue igual, commit `4887f42`).
+- **Qué falta:** reejecutar el pipeline/notebook completo con los 16 resultados de
+  32avos para actualizar el pronóstico de campeón (el de §2 sigue siendo el de
+  pre-32avos); cuando se jueguen y carguen los resultados de Octavos, repetir
+  `scripts/snapshot_ronda.py` para congelar Cuartos.
