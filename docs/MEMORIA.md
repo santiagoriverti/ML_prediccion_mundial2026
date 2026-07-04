@@ -155,14 +155,19 @@ se cargan nuevos resultados en el Excel y se reejecuta el notebook.
   a los ganadores según `ORDEN_BRACKET_R32` (orden real del árbol FIFA), no el orden de
   filas del Excel. Validado contra el bracket oficial (16avos: Argentina vs ganador de
   Australia-Egipto; Suiza vs Colombia; Alemania vs Francia; etc.).
-- Pronóstico (top campeón) **DESACTUALIZADO — corresponde a antes de cerrar los
-  32avos** (72 resultados = grupos completos, árbol del bracket corregido, localía KO
-  0.3): **Argentina ~10,1 % · Francia ~9,5 % · España ~6,6 % · México ~6,2 % · Brasil
-  ~6,2 % · Alemania ~5,5 %** … (suma = 1,0; predictor final blend top-3 elo+rf+xgb,
-  `nu`=0,26, `lambda_prior`=4). **Con los 32avos ya completos (16/16, ver §13) este
-  número cambió** (p.ej. Alemania quedó eliminada por penales) pero **no se
-  reejecutó el pipeline todavía** para obtener el pronóstico nuevo — próximo paso
-  pendiente (§9).
+- **Pronóstico actualizado (04-jul-2026, pipeline reejecutado local con los 32avos
+  YA completos, 20.000 corridas, semilla 2026, localía KO 0.3):** **Francia 17,4 % ·
+  Argentina 14,0 % · Brasil 10,4 % · España 9,4 % · México 7,5 % · Portugal 6,1 % ·
+  Inglaterra 5,8 % · Bélgica 4,9 % · Suiza 4,5 % · Marruecos 4,3 % · Colombia 4,2 % ·
+  Canadá 4,1 % · Estados Unidos 3,9 % · Egipto 1,6 % · Noruega 1,3 % · Paraguay 0,7 %**
+  (resto ≈0; suma = 1,0). Predictor final elegido: **blend top-3 elo+rf+xgb**
+  (log-loss OOF 0,8857, vs ensemble fijo 0,9153 y blend diverso 0,9240); `nu`=0,26,
+  `lambda_prior`=4,0. **Cambio de liderazgo vs el pronóstico previo** (antes Argentina
+  1ª ~10,1 %, ahora Francia 1ª ~17,4 %): la eliminación de Alemania por penales en
+  32avos (rival directo de Francia en el camino del bracket) y el cierre del resto de
+  los cruces reacomodó los caminos hacia semis/final. Avance a Cuartos de los
+  favoritos: Francia 77,7 % · Argentina 69,2 % · Brasil 68,4 % · España 54,6 %.
+  Detalle de cómo se obtuvo (incl. bug propio detectado y corregido en la corrida) en §13.
   **Importante:** el predictor final es **data-driven y cambia con los datos** — a
   veces gana el ensemble fijo (Elo/DC pesan más), a veces el blend top-3; no asumir
   uno fijo. Se recalcula en cada corrida.
@@ -354,9 +359,8 @@ print(res["campeon"].head(12))
 
 ## 9. Pendientes / mejoras posibles
 
-- **(urgente) Reejecutar el pipeline/notebook con los 32avos completos (16/16)** para
-  obtener el pronóstico de campeón actualizado (el de §2 es pre-32avos). El Excel y el
-  código ya están listos; sólo falta correr `Ejecutar todo` en Colab o el snippet de §7.
+- (Hecho 04-jul-2026) **Pipeline reejecutado con los 32avos completos (16/16)** —
+  pronóstico de campeón actualizado en §2 (Francia pasa a 1ª ~17,4 %). Ver §13.
 - **Cargar los resultados de Octavos de final** en la hoja `Eliminatorias` a medida que
   se jueguen (ya está congelada su P(1/X/2) pre-partido en §13, para validación).
   Después de cargarlos: commit + push + correr `scripts/snapshot_ronda.py` de nuevo
@@ -516,7 +520,20 @@ print(res["campeon"].head(12))
   2026-07-04 ~04:11 UTC (antes de jugarse Octavos) — el timestamp del servidor de
   GitHub es la prueba del compromiso prospectivo. **El ancla no se tocó**
   (`preregistro/*.csv` sigue igual, commit `4887f42`).
-- **Qué falta:** reejecutar el pipeline/notebook completo con los 16 resultados de
-  32avos para actualizar el pronóstico de campeón (el de §2 sigue siendo el de
-  pre-32avos); cuando se jueguen y carguen los resultados de Octavos, repetir
-  `scripts/snapshot_ronda.py` para congelar Cuartos.
+- **Pipeline reejecutado localmente (mismo día)** con los 32avos completos: nuevo
+  pronóstico de campeón (ver §2). Nota de proceso: la corrida a mano tuvo un bug
+  propio (no del repo) en la primera pasada — se le pasó el `reporte` completo de
+  `entrenar_modelos_ml` como `hiperparams` a `evaluar_modelos` en vez de
+  `reporte["hiperparams"]`, lo que dejaba fuera de la tabla comparativa a los modelos
+  del zoo (rf/xgb/logit/etc., quedaban con NaN y se filtraban) y hacía que
+  `seleccionar_top`/`elegir_predictor_final` sólo vieran elo+dc. Corregido en la
+  segunda corrida: la tabla comparativa completa (`evaluar_modelos`) quedó
+  `elo 0,873 · ensemble 0,915 · rf 0,948 · xgb 0,956 · extra 0,959 · logit 0,963 ·
+  gbm 0,990 · dc 1,013 · hist 1,030 · lgbm 1,030` (log-loss OOF), y el predictor
+  final ganador **blend top-3 elo+rf+xgb** (0,8857) vs ensemble fijo (0,9153) y blend
+  diverso (0,9240). La simulación Monte Carlo (`simular_torneo`) es independiente de
+  este blend —usa sólo Dixon-Coles como generador de marcadores— así que el bug NO
+  afectó la probabilidad de campeón, sólo el diagnóstico de comparación de modelos.
+- **Qué falta:** cuando se jueguen y carguen los resultados de Octavos, repetir
+  `scripts/snapshot_ronda.py` para congelar Cuartos (protocolo del pre-registro
+  rodante).

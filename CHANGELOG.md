@@ -3,6 +3,18 @@
 Formato: cambios agrupados por fecha. El proyecto entrega **probabilidades**, no
 consejos de apuestas.
 
+## 2026-07-04 — Pronóstico actualizado post-32avos
+
+### Resultado (reejecución del pipeline)
+- Con los 32avos completos (16/16), pronóstico de campeón actualizado (20.000
+  corridas, semilla 2026): **Francia 17,4 % · Argentina 14,0 % · Brasil 10,4 % ·
+  España 9,4 % · México 7,5 % · Portugal 6,1 %** … Predictor final: blend top-3
+  **elo+rf+xgb** (log-loss OOF 0,8857, gana a ensemble fijo 0,9153 y blend diverso
+  0,9240). Francia pasa al 1er lugar (antes Argentina ~10,1 %): la eliminación de
+  Alemania por penales reacomodó los caminos del bracket hacia semis/final.
+- Detalle completo (incl. tabla comparativa de todo el zoo de ML) en
+  `docs/MEMORIA.md` §2 y §13.
+
 ## 2026-07-04 — 32avos completos + primer pre-registro rodante
 
 ### Datos
