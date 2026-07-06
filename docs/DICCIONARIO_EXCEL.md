@@ -110,15 +110,27 @@ posiciones con el **desempate oficial FIFA** dentro de la simulación.
 ### `Eliminatorias` (34) — ACÁ CARGÁS RESULTADOS DE LA FASE FINAL
 `Ronda` · `Partido` · `Equipo 1` · **`Goles 1`** · **`Goles 2`** · `Equipo 2` ·
 `Notas` · `Sede` · **`Slot 1`** · **`Slot 2`** · **`Pen 1`** · **`Pen 2`**.
-- **`Equipo 1` / `Equipo 2`** ahora muestran el **nombre de selección proyectado**
-  (escenario más probable, de `bracket_mas_probable`). Es una proyección que cambia
-  al recargar resultados; los partidos de grupo en curso aún no fijan los cruces.
-- **`Slot 1` / `Slot 2`** guardan las **etiquetas de posición** (`2º A`, `1º E`,
-  `3º A/B/C/D/F`, …) que codifican el bracket reglamentario: **son la fuente de
-  verdad que usa la simulación** (`construir_bracket` las lee de ahí). No las borres.
-- Las rondas siguientes (16avos→Final) están **en blanco** (se arman como árbol
-  binario en código).
-- Cuando empiece la fase final, cargá `Goles 1` / `Goles 2` igual que en grupos.
+- **32avos — `Equipo 1` / `Equipo 2`** muestran el **nombre de selección
+  proyectado** (escenario más probable, de `bracket_mas_probable`) hasta que
+  cierra la fase de grupos; ahí queda fijo (grupos 72/72 completos desde
+  jun-2026).
+- **32avos — `Slot 1` / `Slot 2`** guardan las **etiquetas de posición** (`2º A`,
+  `1º E`, `3º A/B/C/D/F`, …) que codifican el bracket reglamentario: **son la
+  fuente de verdad que usa la simulación** (`construir_bracket` las lee de ahí).
+  No las borres.
+- **Octavos → Final — `Equipo 1` / `Equipo 2` son FÓRMULAS** (agregadas
+  06-jul-2026, ver `docs/MEMORIA.md` §9): cada celda calcula el **ganador de la
+  ronda anterior** (por goles, o por `Pen 1`/`Pen 2` si empataron) apenas se
+  cargan sus goles — ya no quedan en blanco ni hace falta correr Python para
+  verlas. No las pises con texto fijo; si hace falta reconstruirlas, son
+  fórmulas `IF` que apuntan a la fila de la ronda anterior (misma lógica en las
+  5 rondas: Octavos, Cuartos, Semifinales, Tercer puesto y Final).
+  **Importante:** como se escribieron con `openpyxl` (no evalúa fórmulas), cada
+  vez que se editan hay que **abrir el Excel en Excel/Sheets/LibreOffice,
+  dejar que recalcule y guardarlo** antes de commitear — si no, `pandas` lee
+  esas celdas vacías (`NaN`) en vez del nombre del equipo.
+- Cuando se juega cada partido de la fase final, cargá `Goles 1` / `Goles 2`
+  igual que en grupos; los nombres de la ronda siguiente se completan solos.
 
 #### Cómo cargar prórroga y penales (IMPORTANTE en eliminatorias)
 En un KO **siempre avanza alguien**: el que avanza = el que tiene **más goles** en

@@ -1,91 +1,20 @@
 # MEMORIA DEL PROYECTO — ML_prediccion_mundial2026
 
-> Documento maestro para **retomar el proyecto desde cualquier sesión**.
-> Última actualización: **2026-07-06**. Cambio más reciente: **bug de
-> corrección arreglado en `simulate.py`** — `simular_torneo` (Monte Carlo de
-> `prob_campeon`) y `cuadro_completo_probable` (el "cuadro más probable") sólo
-> fijaban como hecho real el resultado de **32avos**; cualquier ronda posterior
-> (Octavos en adelante) se seguía simulando al azar aunque ya hubiese resultado
-> cargado en el Excel. No se notó antes porque hasta el 04-jul sólo existían
-> resultados reales de 32avos. Se generalizó el mecanismo (mismo que ya usaba
-> `probabilidades_eliminatorias`, que sí estaba bien) para fijar **cualquier
-> ronda ya cargada**: `_precomputar`/`_una_corrida`/`simular_torneo` y
-> `cuadro_completo_probable` ahora aceptan `resultados_ko` (de
-> `data_loader.cargar_resultados_ko`) y lo usan en TODAS las rondas, no sólo la
-> primera. El notebook se actualizó para calcular `resultados_ko` una sola vez
-> (nueva celda tras la carga del Excel, sección 3) y pasarlo a las tres
-> funciones que lo necesitan. **Verificado localmente** (20.000 corridas, mismo
-> modelo/semilla): con los 4 resultados de Octavos ya jugados (Paraguay 0-1
-> Francia, Canadá 0-3 Marruecos, Brasil 1-2 Noruega, México 2-3 Inglaterra),
-> antes del fix Brasil/México/Paraguay/Canadá (ya eliminados) seguían con
-> 10,0%/7,1%/0,9%/3,6% de prob. de campeón; **con el fix pasan a 0,0%** en
-> Cuartos/Semis/Final/Campeón, y Francia/Marruecos/Noruega/Inglaterra avanzan
-> como hecho fijo y sólo se simula lo que sigue. Pronóstico de campeón
-> corregido (20.000 corridas, `nu`=0,26): **Francia 22,9 % · Inglaterra 15,5 % ·
-> Argentina 14,9 % · España 9,4 % · Marruecos 7,4 % · Portugal 5,6 % · Suiza
-> 5,2 % · Colombia 4,6 % · Bélgica 4,4 % · Noruega 4,3 % · Estados Unidos 3,9 % ·
-> Egipto 1,8 %** (resto 0 %, incluye a los 4 eliminados). Detalle en
-> `CHANGELOG.md` (2026-07-06) y `docs/ARQUITECTURA.md`. Cambio previo (06-jul,
-> misma sesión anterior): **4 resultados de Octavos cargados** (Paraguay 0-1
-> Francia, Canadá 0-3 Marruecos, Brasil 1-2 Noruega, México 2-3 Inglaterra;
-> fuente: prensa) **+ fórmulas de progresión automática** en la hoja
-> `Eliminatorias`: `Equipo 1`/`Equipo 2` de Octavos, Cuartos, Semifinales,
-> Tercer puesto y Final ahora se completan solos (fórmula `IF` que toma el
-> ganador por goles o por `Pen 1`/`Pen 2` si hubo empate) apenas se cargan los
-> goles de la ronda anterior — ya no hace falta correr Python para ver los
-> nombres. Los 8 cruces de Octavos ya muestran los países (incluidos los 4 que
-> faltaban jugarse al cargarlos: Portugal-España y EEUU-Bélgica el 06-jul,
-> Argentina-Egipto y Suiza-Colombia el 07-jul), determinados por los ganadores
-> de 32avos. Cambio previo (04-jul): **32avos de final COMPLETOS (16/16)** — los 14 resultados que faltaban se cargaron al Excel entre el
-> 30-jun y el 04-jul (commits `2ab6d62`…`bec1f20`, subidos vía upload web, sin
-> actualizar esta memoria en el momento). 3 definidos por penales: Alemania 1-1
-> **Paraguay** (pen 3-4), Países Bajos 1-1 **Marruecos** (pen 2-3), Australia 1-1
-> **Egipto** (pen 2-4). Con la ronda cerrada se corrió **por primera vez el
-> pre-registro RODANTE** (`scripts/snapshot_ronda.py`, ver §7 de `PREREGISTRO.md`):
-> detectó que la próxima ronda con cruces reales es **Octavos de final** (16avos en
-> el código, 8 partidos) y congeló su P(1/X/2) en
-> `preregistro/rondas/snapshot_16avos_20260704T041119Z.{csv,json}`
-> (nu=0.26, lambda=4.0, semilla 2026). Commit `ab1f544`, **pusheado a
-> `origin/main`** el 2026-07-04 ~04:11 UTC — el timestamp de GitHub es la prueba de
-> que se congeló ANTES de jugarse Octavos. **No se tocó el ancla** (`preregistro/*.csv`,
-> sigue en `4887f42`). Cruces de Octavos: Paraguay-Francia, Canadá-Marruecos,
-> Portugal-España, EEUU-Bélgica, Brasil-Noruega, México-Inglaterra, Argentina-Egipto,
-> Suiza-Colombia (ver §13). **Pendiente:** no se reejecutó el notebook/pipeline
-> completo con los 16 resultados nuevos de 32avos (no hay `outputs/` regenerados ni
-> pronóstico de campeón actualizado post-32avos; el de §2 sigue siendo el de
-> pre-32avos). Cambio previo: **soporte de PENALES en
-> eliminatorias** (columnas `Pen 1`/`Pen 2` en la hoja Eliminatorias) — ver §12. Un KO
-> que termina **empatado en los 90'/prórroga y se define por penales** ahora se carga
-> con el **marcador real** (ej. `1-1`) **+ la tanda** (`Pen 1`/`Pen 2`, ej. `4-2`): los
-> penales sólo deciden **quién avanza** sin falsear el marcador (clave para validar el
-> pre-registro, cuyo objetivo es el 1/X/2 de los 90'). Si el KO se define en el alargue,
-> se carga el marcador con los goles del alargue (sin penales). Implementado en
-> `data_loader` (lectura) + `simulate` (helper `_ganador_ko` aplicado en Monte Carlo,
-> cuadro y probabilidades por ronda); **no cambia el modelo** (los goles de KO no
-> reentrenan Elo/DC, sólo fijan el avance). Cambio previo: **PRE-REGISTRO
-> PROSPECTIVO de la fase final** (ver §11) — se congelaron todas las probabilidades de
-> eliminatorias ANTES de jugarse ningún partido de KO (commit y tag firmados +
-> GitHub Release con timestamp), para validarlas prospectivamente ronda por ronda y
-> blindar el estudio contra la crítica de overfitting retrospectivo. Cambio previo: **orden OFICIAL del
-> árbol del bracket** (`ORDEN_BRACKET_R32` + `_reordenar_bracket` en `simulate.py`):
-> el avance de 32avos→16avos→…→final usaba el orden de filas del Excel (≠ árbol) y
-> armaba mal los cruces; ahora reproduce el cuadro oficial FIFA (validado: 16avos =
-> Argentina vs ganador de Australia-Egipto). Antes: **fase de grupos COMPLETA
-> (72/72)**; **tabla OFICIAL FIFA de terceros** (`src/tabla_terceros.py`, 495 combos)
-> que arregla el bug de combinación de 32avos; **probabilidades por ronda de KO**
-> (`probabilidades_eliminatorias`, sección 12c: P(1/X/2) de la próxima ronda, avanza
-> sola al cargar resultados); `cargar_resultados_ko`; nombres de tercero corregidos en
-> el Excel. Cambios previos: variables curadas
-> DT/clasificatoria/top-5; zoo de ML con auto-tuning; auto-calibración de nu/lambda;
-> **predictor final = mejor combinación medida** (`elegir_predictor_final`); XGBoost
-> nativo (clases enteras); fijado de resultados de KO; fórmulas Excel; **camino más
-> probable hasta la final** (`cuadro_completo_probable`, sección 12b); **fix Colab**
-> (la celda de setup hace `git reset --hard origin/main` + purga módulos para traer
-> siempre el código nuevo); y **figuras de calidad de publicación** (sección 16:
-> `fig_reliability` / `fig_champion` / `fig_pipeline`, PDF+PNG 600 dpi, textos en
-> inglés, auto-descarga en Colab). Mantené este archivo al día al cambiar decisiones.
+> Documento maestro para **retomar el proyecto desde cualquier sesión o PC**:
+> alcanza con `git clone` + leer este archivo, no depende de memoria local de
+> ninguna máquina. Mantenelo al día al cambiar decisiones importantes.
 >
-> **Ver también [`../CHANGELOG.md`](../CHANGELOG.md)** para el detalle cronológico.
+> **Última actualización: 2026-07-06.** Estado en una línea: fase de grupos
+> (72/72) y 32avos (16/16) completos; **4 de 8 Octavos jugados** (Paraguay 0-1
+> Francia, Canadá 0-3 Marruecos, Brasil 1-2 Noruega, México 2-3 Inglaterra;
+> faltan Portugal-España, EEUU-Bélgica, Argentina-Egipto, Suiza-Colombia); se
+> encontró y corrigió un bug que hacía que el pronóstico de campeón NO
+> descartara a los equipos ya eliminados más allá de 32avos (ver **§14**).
+> Pronóstico de campeón vigente y decisiones de modelado: **§2**. Cómo cargar
+> resultados nuevos y reejecutar: **§3**. Historial cronológico completo (todos
+> los hitos previos: pre-registro, penales, orden del bracket, tabla oficial de
+> terceros, etc.) en [`../CHANGELOG.md`](../CHANGELOG.md) y en las secciones
+> numeradas **§11 a §14** de este documento.
 
 Documentos complementarios:
 - [`DICCIONARIO_EXCEL.md`](DICCIONARIO_EXCEL.md) — cómo es el Excel real, hoja por
@@ -411,11 +340,8 @@ print(res["campeon"].head(12))
   rodante) — todavía no corresponde correrlo: Cuartos no tiene los 4 cruces
   reales definidos hasta que cierre Octavos.
 - (Hecho 04-jul-2026) **Pipeline reejecutado con los 32avos completos (16/16)** —
-  pronóstico de campeón actualizado en §2 (Francia pasa a 1ª ~17,4 %). Ver §13.
-- **Cargar los resultados de Octavos de final** en la hoja `Eliminatorias` a medida que
-  se jueguen (ya está congelada su P(1/X/2) pre-partido en §13, para validación).
-  Después de cargarlos: commit + push + correr `scripts/snapshot_ronda.py` de nuevo
-  para congelar Cuartos (protocolo del pre-registro rodante, §11/§13).
+  pronóstico de campeón actualizado en §2 (Francia pasa a 1ª ~17,4 %, luego
+  corregido en §14). Ver §13.
 - (Hecho jun/jul-2026) Cargado el resto de la fecha 3 de grupos y **los 32avos
   completos** — ver §13.
 - (Hecho jun-2026) Cargados **Puntos/Ranking FIFA** de las 11 selecciones que faltaban
@@ -461,9 +387,15 @@ print(res["campeon"].head(12))
 
 ## 10. Seguridad (IMPORTANTE)
 
-- Los **tokens de GitHub** usados para los pushes (el inicial y el de esta sesión)
-  quedaron expuestos en los prompts. **Rotarlos/revocarlos** en GitHub → *Settings ▸
-  Developer settings ▸ Personal access tokens*.
+- **Pendiente recurrente sin resolver:** en varias sesiones (incluida la del
+  06-jul-2026, commit `679a28a`) se pegó un **Personal Access Token de GitHub
+  en texto plano en el chat** para pushear. Cada vez que esto pasa, **rotá/
+  revocá ese token** en GitHub → *Settings ▸ Developer settings ▸ Personal
+  access tokens* apenas termine la sesión — no importa que no se haya escrito a
+  disco, quedó expuesto igual. Alternativa más segura para la próxima vez:
+  el repo ya tiene `credential.helper=manager` (Windows Git Credential Manager)
+  con credenciales guardadas que **funcionan sin pegar ningún token** (confirmado
+  con `git push --dry-run`); usarlas evita este problema por completo.
 - El token **nunca** se escribió en archivos versionados ni en `.git/config`
   (se usó vía variable de entorno y un header efímero). Verificado.
 - `.gitignore` ya excluye `*.token`, `*.pat`, `.env*`, `secrets*.json`.
