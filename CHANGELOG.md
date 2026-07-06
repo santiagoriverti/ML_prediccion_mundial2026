@@ -3,6 +3,33 @@
 Formato: cambios agrupados por fecha. El proyecto entrega **probabilidades**, no
 consejos de apuestas.
 
+## 2026-07-06 — Resultados de Octavos cargados + progresión automática por fórmula
+
+### Datos
+- Cargados en la hoja `Eliminatorias` los **4 resultados de Octavos ya jugados**
+  (fuente: prensa, 04/05-jul-2026): Paraguay 0-1 **Francia**, Canadá 0-3
+  **Marruecos**, Brasil 1-2 **Noruega**, México 2-3 **Inglaterra**. Pendientes de
+  jugarse: Portugal-España y EE.UU.-Bélgica (06-jul), Argentina-Egipto y
+  Suiza-Colombia (07-jul).
+
+### Excel (progresión automática por fórmula)
+- Agregadas fórmulas `IF` (ganador por goles, o por `Pen 1`/`Pen 2` si empataron)
+  en `Equipo 1`/`Equipo 2` de **Octavos, Cuartos, Semifinales, Tercer puesto y
+  Final**: cada celda apunta a la fila de la ronda anterior. Antes esas celdas se
+  llenaban solo vía Python (`bracket_mas_probable`/notebook); ahora el Excel se
+  auto-completa con nombres reales apenas se cargan los goles de la ronda previa,
+  sin tocar código.
+- Con esto, los **8 cruces de Octavos ya muestran los países** (aunque 4 partidos
+  no se jugaron todavía) porque ya están determinados por los ganadores de
+  32avos. Cuartos/Semis/Final quedan en blanco hasta que se carguen los goles que
+  faltan.
+- **Importante (recalcular antes de correr el pipeline):** estas fórmulas se
+  escribieron con `openpyxl`, que no evalúa fórmulas — no quedó un valor
+  cacheado. Hay que **abrir el Excel en Excel/Google Sheets/LibreOffice, dejar
+  que recalcule y guardarlo (Ctrl+S)** antes de commitear/pushear y de correr el
+  notebook; si no, `pandas.read_excel` va a leer `NaN` en esas celdas en vez del
+  nombre del equipo.
+
 ## 2026-07-04 — Pronóstico actualizado post-32avos
 
 ### Resultado (reejecución del pipeline)

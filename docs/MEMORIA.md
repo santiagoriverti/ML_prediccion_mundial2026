@@ -1,7 +1,22 @@
 # MEMORIA DEL PROYECTO — ML_prediccion_mundial2026
 
 > Documento maestro para **retomar el proyecto desde cualquier sesión**.
-> Última actualización: **2026-07-04**. Cambio más reciente: **32avos de final
+> Última actualización: **2026-07-06**. Cambio más reciente: **4 resultados de
+> Octavos cargados** (Paraguay 0-1 Francia, Canadá 0-3 Marruecos, Brasil 1-2
+> Noruega, México 2-3 Inglaterra; fuente: prensa) **+ fórmulas de progresión
+> automática** en la hoja `Eliminatorias`: `Equipo 1`/`Equipo 2` de Octavos,
+> Cuartos, Semifinales, Tercer puesto y Final ahora se completan solos (fórmula
+> `IF` que toma el ganador por goles o por `Pen 1`/`Pen 2` si hubo empate) apenas
+> se cargan los goles de la ronda anterior — ya no hace falta correr Python para
+> ver los nombres. Los 8 cruces de Octavos ya muestran los países (incluidos los
+> 4 que faltan jugarse: Portugal-España y EEUU-Bélgica el 06-jul, Argentina-Egipto
+> y Suiza-Colombia el 07-jul), determinados por los ganadores de 32avos.
+> **IMPORTANTE — pendiente de recalcular:** las fórmulas se escribieron con
+> `openpyxl` (no evalúa fórmulas), así que **antes de commitear/pushear y de
+> correr el notebook hay que abrir el Excel en Excel/Google Sheets/LibreOffice,
+> dejar que recalcule y guardarlo (Ctrl+S)** — si no, `pandas.read_excel` lee
+> `NaN` en esas celdas en vez del nombre del equipo. Ver detalle en
+> `CHANGELOG.md` (2026-07-06). Cambio previo (04-jul): **32avos de final
 > COMPLETOS (16/16)** — los 14 resultados que faltaban se cargaron al Excel entre el
 > 30-jun y el 04-jul (commits `2ab6d62`…`bec1f20`, subidos vía upload web, sin
 > actualizar esta memoria en el momento). 3 definidos por penales: Alemania 1-1
@@ -359,6 +374,14 @@ print(res["campeon"].head(12))
 
 ## 9. Pendientes / mejoras posibles
 
+- **Recalcular el Excel en Excel/Sheets/LibreOffice y guardarlo** antes de
+  commitear (ver aviso arriba) — las fórmulas nuevas de progresión automática no
+  tienen valor cacheado todavía.
+- **Cargar los 4 resultados de Octavos que faltan** (Portugal-España,
+  EEUU-Bélgica, Argentina-Egipto, Suiza-Colombia) a medida que se jueguen. Con
+  las fórmulas nuevas, Cuartos se completa solo al cargarlos. Después: reejecutar
+  el pipeline (nuevo pronóstico de campeón) y correr `scripts/snapshot_ronda.py`
+  para congelar Cuartos (protocolo del pre-registro rodante).
 - (Hecho 04-jul-2026) **Pipeline reejecutado con los 32avos completos (16/16)** —
   pronóstico de campeón actualizado en §2 (Francia pasa a 1ª ~17,4 %). Ver §13.
 - **Cargar los resultados de Octavos de final** en la hoja `Eliminatorias` a medida que
