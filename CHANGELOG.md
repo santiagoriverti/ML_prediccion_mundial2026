@@ -3,7 +3,37 @@
 Formato: cambios agrupados por fecha. El proyecto entrega **probabilidades**, no
 consejos de apuestas.
 
-## 2026-07-06 — Resultados de Octavos cargados + progresión automática por fórmula
+## 2026-07-06 (b) — Fix: la simulación no descartaba eliminados más allá de 32avos
+
+### Bug corregido
+- `simular_torneo` (Monte Carlo de `prob_campeon`) y `cuadro_completo_probable`
+  (el "cuadro más probable") sólo tomaban como hecho fijo el resultado de
+  **32avos**; cualquier ronda posterior (Octavos en adelante) se seguía
+  simulando al azar aunque ya hubiera resultado real cargado en el Excel. Se
+  detectó al cargar los primeros 4 resultados de Octavos: Brasil/México/
+  Paraguay/Canadá (ya eliminados) seguían con prob. de campeón > 0 %.
+- Fix en `src/simulate.py`: `_precomputar` ahora acepta `resultados_ko`
+  (de `data_loader.cargar_resultados_ko`, todas las rondas) y arma
+  `res_ko_todas`; `_una_corrida`/`simular_torneo` y `cuadro_completo_probable`
+  fijan el resultado real de **cualquier ronda ya cargada**, no sólo la
+  primera. `probabilidades_eliminatorias` no tenía este bug (ya usaba el
+  mismo mecanismo). Notebook actualizado: `resultados_ko` se calcula una sola
+  vez (nueva celda tras la carga del Excel) y se reusa en las tres funciones.
+- **Verificado localmente** (20.000 corridas): sin el fix, los 4 eliminados
+  daban 10,0 %/7,1 %/0,9 %/3,6 % de prob. de campeón; con el fix pasan a
+  **0,0 %**. Nuevo pronóstico: Francia 22,9 % · Inglaterra 15,5 % ·
+  Argentina 14,9 % · España 9,4 % · Marruecos 7,4 % · Portugal 5,6 % ·
+  Suiza 5,2 % · Colombia 4,6 % · Bélgica 4,4 % · Noruega 4,3 % ·
+  Estados Unidos 3,9 % · Egipto 1,8 % (resto 0 %). El pronóstico del
+  2026-07-06 (a), más abajo, quedó **obsoleto/incorrecto** por este bug.
+- Revisados completos `data_loader.py`, `features.py`, `models.py`, `viz.py`:
+  no se encontraron otros errores de corrección. Detalle completo en
+  `docs/MEMORIA.md` §14.
+- **No se tocó** `preregistro/*.csv` (ancla, congelada el 29-jun) ni se
+  reejecutó `scripts/gen_preregistro.py` — debe quedar fija por diseño.
+  `scripts/snapshot_ronda.py` no tenía el bug.
+
+## 2026-07-06 (a) — Resultados de Octavos cargados + progresión automática por fórmula
 
 ### Datos
 - Cargados en la hoja `Eliminatorias` los **4 resultados de Octavos ya jugados**

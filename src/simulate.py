@@ -309,12 +309,20 @@ def _subir_ronda(ronda, equipo, nombre_ronda):
 # 4) Monte Carlo (versión optimizada: precomputa estructuras y vectoriza el
 #    muestreo de goles de los partidos de grupo no jugados)
 # ===========================================================================
-def _precomputar(equipos, fixture, bracket, gen):
+def _precomputar(equipos, fixture, bracket, gen, resultados_ko=None):
     """Arma estructuras livianas (listas/dicts) reutilizables en cada corrida.
 
     Clave para el rendimiento: evita usar pandas (iterrows/set_index) dentro
     del bucle Monte Carlo y precalcula las medias de goles (lam, mu) de los
     partidos de grupo que faltan jugar (no cambian entre corridas).
+
+    ``resultados_ko``: dict opcional ``{(ronda, partido): (g1, g2[, pen1, pen2])}``
+    con resultados de KO de TODAS las rondas (de ``data_loader.cargar_resultados_ko``).
+    Se combina con los resultados de 32avos ya presentes en ``bracket`` (que sólo
+    trae esa ronda, por tener slots de posición) para armar ``res_ko_todas``, la
+    fuente única que usan ``_una_corrida``/``simular_torneo`` y
+    ``cuadro_completo_probable`` para fijar CUALQUIER ronda ya jugada (no sólo
+    32avos) y descartar a los eliminados en todas las corridas.
     """
     paises = equipos["pais"].tolist()
     idx = equipos.set_index("pais")
@@ -367,12 +375,20 @@ def _precomputar(equipos, fixture, bracket, gen):
     # del Excel), para que el emparejamiento consecutivo de ganadores arme bien el cuadro.
     cruces_def = _reordenar_bracket(cruces_def)
 
+    # Fuente única de resultados KO de TODAS las rondas: prioriza lo pasado en
+    # ``resultados_ko`` (cubre 32avos...Final) y usa el ``fixed_ko`` derivado del
+    # bracket (sólo 32avos) como fallback si no se pasó nada (retrocompatible).
+    res_ko_todas = dict(resultados_ko or {})
+    for partido, vals in fixed_ko.items():
+        res_ko_todas.setdefault(("32avos", int(partido)), vals)
+
     return {
         "paises": paises, "sede": sede, "partidos": partidos,
         "lam_pend": np.array(lam_pend, dtype=float),
         "mu_pend": np.array(mu_pend, dtype=float),
         "grupos": grupos, "cruces_def": cruces_def,
         "slots_terceros": slots_terceros, "fixed_ko": fixed_ko,
+        "res_ko_todas": res_ko_todas,
     }
 
 
@@ -430,11 +446,10 @@ def _una_corrida(ctx, gen, rng, ga_row, gb_row):
     # --- Eliminatorias (localía moderada para anfitriones; ver FACTOR_LOCALIA_KO) ---
     nombres = ["32avos", "16avos", "Cuartos", "Semifinales", "Final"]
     sede = ctx["sede"]
-    fixed_ko = ctx.get("fixed_ko", {})
-    ids_r1 = [idp for (idp, _, _) in ctx["cruces_def"]]  # partido de cada cruce
+    res_ko = ctx.get("res_ko_todas", {})
+    ids_r1 = [idp for (idp, _, _) in ctx["cruces_def"]]  # partido de cada cruce de 32avos
     actual = cruces
     for nombre in nombres:
-        es_primera = (nombre == nombres[0])
         ganadores = []
         for k, (e1, e2) in enumerate(actual):
             if e1 is not None:
@@ -449,10 +464,14 @@ def _una_corrida(ctx, gen, rng, ga_row, gb_row):
                 ganadores.append(e1); continue
             # Anfitrión en casa: fracción de la ventaja (no plena) si uno es sede.
             anf = FACTOR_LOCALIA_KO * (sede.get(e1, 0.0) - sede.get(e2, 0.0))
-            # ¿Resultado de 32avos ya cargado? -> hecho fijo. Gana quien marcó más;
-            # si empató en 90', decide la tanda de penales cargada, y si no hay
-            # penales, se resuelve por fuerza (comportamiento previo).
-            fijo = fixed_ko.get(ids_r1[k]) if es_primera else None
+            # ¿Resultado de esta ronda ya cargado (CUALQUIER ronda, no sólo 32avos)?
+            # -> hecho fijo. Gana quien marcó más; si empató en 90', decide la tanda
+            # de penales cargada, y si no hay penales, se resuelve por fuerza
+            # (comportamiento previo). En 32avos el partido se identifica por su id
+            # real del Excel (``ids_r1``); en rondas siguientes, por su posición
+            # dentro del árbol (ya reordenado consecutivamente ronda a ronda).
+            partido_num = int(ids_r1[k]) if nombre == "32avos" else (k + 1)
+            fijo = res_ko.get((nombre, partido_num))
             if fijo is not None:
                 p1f, p2f = _pens_de(fijo)
                 gan = _ganador_ko(
@@ -479,17 +498,25 @@ def _una_corrida(ctx, gen, rng, ga_row, gb_row):
 
 
 def simular_torneo(equipos, fixture, bracket, dixon_coles,
-                   n_sims: int = 20000, semilla: int = 2026, verbose: bool = True):
+                   n_sims: int = 20000, semilla: int = 2026, verbose: bool = True,
+                   resultados_ko=None):
     """Corre el Monte Carlo del torneo y agrega probabilidades.
 
     Devuelve un dict con DataFrames:
       * ``campeon``: prob. de ser campeón por selección (mayor a menor).
       * ``avance``: prob. de ALCANZAR cada ronda (32avos…Final/Campeón).
       * ``grupos``: prob. de ganar el grupo y de clasificar.
+
+    ``resultados_ko`` (opcional): dict ``{(ronda, partido): (g1, g2[, pen1, pen2])}``
+    de ``data_loader.cargar_resultados_ko`` con los resultados de KO YA CARGADOS
+    de TODAS las rondas (no sólo 32avos). Cada partido con resultado cargado queda
+    FIJO en las 20.000 corridas (se toma del Excel, no se simula) y el perdedor
+    queda eliminado (0% de ahí en más); si no se pasa, sólo se fijan los 32avos
+    (comportamiento previo, vía el ``bracket``).
     """
     rng = np.random.default_rng(semilla)
     gen = GeneradorGoles(dixon_coles, rng)
-    ctx = _precomputar(equipos, fixture, bracket, gen)
+    ctx = _precomputar(equipos, fixture, bracket, gen, resultados_ko=resultados_ko)
 
     # Pre-muestreo vectorizado de los goles de los partidos de grupo pendientes.
     n_pend = len(ctx["lam_pend"])
@@ -772,7 +799,7 @@ def probabilidades_eliminatorias(equipos, fixture, bracket, dixon_coles,
     return df
 
 
-def cuadro_completo_probable(equipos, fixture, bracket, dixon_coles):
+def cuadro_completo_probable(equipos, fixture, bracket, dixon_coles, resultados_ko=None):
     """Juega el **escenario más probable hasta la final** (determinista).
 
     Resuelve los grupos con su marcador esperado, arma los 32avos (fijando los
@@ -781,14 +808,18 @@ def cuadro_completo_probable(equipos, fixture, bracket, dixon_coles):
     el más fuerte (prórroga/penales). Devuelve un DataFrame con una fila por partido
     de cada ronda: ``ronda, partido, equipo_1, equipo_2, marcador, ganador, nota``.
 
+    ``resultados_ko`` (opcional): igual que en ``simular_torneo`` — resultados KO
+    de TODAS las rondas ya cargadas; cada partido con resultado se muestra con
+    nota "(cargado)" y NO se simula, sólo se resuelve el ganador real.
+
     OJO: es UN escenario coherente (el más probable partido a partido), **no** la
     probabilidad de campeón —esa sale del Monte Carlo (`simular_torneo`), que
     mantiene toda la incertidumbre. El campeón de este cuadro puede no ser el
     favorito del Monte Carlo. Cambia al recargar resultados.
     """
     gen = GeneradorGoles(dixon_coles, np.random.default_rng(0))
-    ctx = _precomputar(equipos, fixture, bracket, gen)
-    sede, fixed_ko, rating = ctx["sede"], ctx.get("fixed_ko", {}), gen._rating
+    ctx = _precomputar(equipos, fixture, bracket, gen, resultados_ko=resultados_ko)
+    sede, res_ko, rating = ctx["sede"], ctx.get("res_ko_todas", {}), gen._rating
 
     # --- Resolver grupos con el marcador esperado (igual que bracket_mas_probable) ---
     res_grupo = {}
@@ -843,7 +874,10 @@ def cuadro_completo_probable(equipos, fixture, bracket, dixon_coles):
             if e2 is None:
                 ganadores.append(e1); continue
             anf = FACTOR_LOCALIA_KO * (sede.get(e1, 0.0) - sede.get(e2, 0.0))
-            fijo = fixed_ko.get(ids_r1[k]) if ridx == 0 else None
+            # Partido con resultado ya cargado en CUALQUIER ronda (no sólo 32avos):
+            # se resuelve el ganador real, no se simula.
+            partido_num = int(ids_r1[k]) if ridx == 0 else (k + 1)
+            fijo = res_ko.get((ronda, partido_num))
             we = elo_esperado(rating.get(e1, 1500.0), rating.get(e2, 1500.0), anf)
             suf_pen = ""   # sufijo "(pen x-y)" para el marcador si hubo tanda
             if fijo is not None:   # resultado de KO ya cargado: es un hecho fijo

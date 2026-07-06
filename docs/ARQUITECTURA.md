@@ -115,14 +115,22 @@ Actualización de Elo y simulación Monte Carlo del torneo.
 
 - `actualizar_elo(equipos, fixture, K=32.0)` — mueve `rating_base` con los partidos
   **ya jugados** (orden cronológico, con factor de margen de victoria).
-- `simular_torneo(equipos, fixture, bracket, dixon_coles, n_sims=20000, semilla=2026)`
-  — **Monte Carlo**. Devuelve dict con DataFrames `campeon`, `avance`, `grupos`.
+- `simular_torneo(equipos, fixture, bracket, dixon_coles, n_sims=20000, semilla=2026,
+  resultados_ko=None)` — **Monte Carlo**. Devuelve dict con DataFrames `campeon`,
+  `avance`, `grupos`.
   - Optimizado: **precomputa** estructuras (`_precomputar`) y **vectoriza** el
     muestreo de goles de los partidos de grupo pendientes. ~10 s / 20.000 corridas.
-  - **Fija los resultados de eliminatorias ya cargados** (`fixed_ko`, ahora
-    `(g1, g2, pen1, pen2)`): un 32avos con goles cargados es un hecho fijo y el perdedor
-    queda eliminado en todas las corridas. Si empató en 90' y hay tanda cargada, **la
-    tanda decide** quién avanza.
+  - **Fija los resultados de eliminatorias ya cargados, de CUALQUIER ronda**
+    (`resultados_ko`, de `data_loader.cargar_resultados_ko`, combinado con el
+    `fixed_ko` de 32avos derivado de `bracket` en `ctx["res_ko_todas"]`): un
+    partido de 32avos, Octavos, Cuartos, Semis o Final con goles cargados es un
+    hecho fijo y el perdedor queda eliminado (0 % de ahí en más) en todas las
+    corridas. Si empató en 90' y hay tanda cargada, **la tanda decide** quién
+    avanza. **Corregido 06-jul-2026**: antes sólo se fijaba la ronda de 32avos
+    (`es_primera`/`ridx==0`); las rondas siguientes se simulaban al azar aunque
+    ya hubiera resultado real cargado (ver `docs/MEMORIA.md` §14). Si no se pasa
+    `resultados_ko`, sigue funcionando igual que antes pero sólo para 32avos
+    (retrocompatible).
   - `avance` ya **no** trae la columna duplicada de campeón (sólo `prob_campeon`).
 - Internas: `GeneradorGoles` (muestreo + `prob_gana_a` para penales),
   `_ganador_ko` (desempate de un KO cargado: goles → tanda `Pen 1`/`Pen 2` → fuerza),
@@ -140,11 +148,14 @@ Actualización de Elo y simulación Monte Carlo del torneo.
   terminó empatado, si hay tanda en `Pen 1`/`Pen 2` decide la tanda; si no, la fuerza.
 - `bracket_mas_probable(...)` — cuadro de **32avos** del escenario más probable
   (determinista, nombres de selección, sin duplicados).
-- `cuadro_completo_probable(...)` — juega el **camino más probable HASTA LA FINAL**
-  (32avos→Final): por cada cruce, marcador decisivo más probable, quién avanza
-  (mayor prob. de pasar; "(muy parejo)" si ~50/50) y el campeón del escenario. Respeta
-  los KO ya cargados. **Es un escenario partido a partido, no la prob. de campeón**
-  (esa la da `simular_torneo`).
+- `cuadro_completo_probable(equipos, fixture, bracket, dixon_coles, resultados_ko=None)`
+  — juega el **camino más probable HASTA LA FINAL** (32avos→Final): por cada
+  cruce, marcador decisivo más probable, quién avanza (mayor prob. de pasar;
+  "(muy parejo)" si ~50/50) y el campeón del escenario. Respeta los KO ya
+  cargados de **cualquier ronda** (mismo `resultados_ko`/`res_ko_todas` que
+  `simular_torneo`; corregido 06-jul-2026, antes sólo respetaba 32avos). **Es un
+  escenario partido a partido, no la prob. de campeón** (esa la da
+  `simular_torneo`).
 - `probabilidades_eliminatorias(equipos, fixture, bracket, dixon_coles, resultados_ko)`
   — estado del cuadro KO **ronda por ronda**: para cada partido con equipos ya
   definidos devuelve `estado` (`jugado`/`pendiente`) con marcador+ganador o

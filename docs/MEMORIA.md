@@ -1,23 +1,42 @@
 # MEMORIA DEL PROYECTO — ML_prediccion_mundial2026
 
 > Documento maestro para **retomar el proyecto desde cualquier sesión**.
-> Última actualización: **2026-07-06**. Cambio más reciente: **4 resultados de
-> Octavos cargados** (Paraguay 0-1 Francia, Canadá 0-3 Marruecos, Brasil 1-2
-> Noruega, México 2-3 Inglaterra; fuente: prensa) **+ fórmulas de progresión
-> automática** en la hoja `Eliminatorias`: `Equipo 1`/`Equipo 2` de Octavos,
-> Cuartos, Semifinales, Tercer puesto y Final ahora se completan solos (fórmula
-> `IF` que toma el ganador por goles o por `Pen 1`/`Pen 2` si hubo empate) apenas
-> se cargan los goles de la ronda anterior — ya no hace falta correr Python para
-> ver los nombres. Los 8 cruces de Octavos ya muestran los países (incluidos los
-> 4 que faltan jugarse: Portugal-España y EEUU-Bélgica el 06-jul, Argentina-Egipto
-> y Suiza-Colombia el 07-jul), determinados por los ganadores de 32avos.
-> **IMPORTANTE — pendiente de recalcular:** las fórmulas se escribieron con
-> `openpyxl` (no evalúa fórmulas), así que **antes de commitear/pushear y de
-> correr el notebook hay que abrir el Excel en Excel/Google Sheets/LibreOffice,
-> dejar que recalcule y guardarlo (Ctrl+S)** — si no, `pandas.read_excel` lee
-> `NaN` en esas celdas en vez del nombre del equipo. Ver detalle en
-> `CHANGELOG.md` (2026-07-06). Cambio previo (04-jul): **32avos de final
-> COMPLETOS (16/16)** — los 14 resultados que faltaban se cargaron al Excel entre el
+> Última actualización: **2026-07-06**. Cambio más reciente: **bug de
+> corrección arreglado en `simulate.py`** — `simular_torneo` (Monte Carlo de
+> `prob_campeon`) y `cuadro_completo_probable` (el "cuadro más probable") sólo
+> fijaban como hecho real el resultado de **32avos**; cualquier ronda posterior
+> (Octavos en adelante) se seguía simulando al azar aunque ya hubiese resultado
+> cargado en el Excel. No se notó antes porque hasta el 04-jul sólo existían
+> resultados reales de 32avos. Se generalizó el mecanismo (mismo que ya usaba
+> `probabilidades_eliminatorias`, que sí estaba bien) para fijar **cualquier
+> ronda ya cargada**: `_precomputar`/`_una_corrida`/`simular_torneo` y
+> `cuadro_completo_probable` ahora aceptan `resultados_ko` (de
+> `data_loader.cargar_resultados_ko`) y lo usan en TODAS las rondas, no sólo la
+> primera. El notebook se actualizó para calcular `resultados_ko` una sola vez
+> (nueva celda tras la carga del Excel, sección 3) y pasarlo a las tres
+> funciones que lo necesitan. **Verificado localmente** (20.000 corridas, mismo
+> modelo/semilla): con los 4 resultados de Octavos ya jugados (Paraguay 0-1
+> Francia, Canadá 0-3 Marruecos, Brasil 1-2 Noruega, México 2-3 Inglaterra),
+> antes del fix Brasil/México/Paraguay/Canadá (ya eliminados) seguían con
+> 10,0%/7,1%/0,9%/3,6% de prob. de campeón; **con el fix pasan a 0,0%** en
+> Cuartos/Semis/Final/Campeón, y Francia/Marruecos/Noruega/Inglaterra avanzan
+> como hecho fijo y sólo se simula lo que sigue. Pronóstico de campeón
+> corregido (20.000 corridas, `nu`=0,26): **Francia 22,9 % · Inglaterra 15,5 % ·
+> Argentina 14,9 % · España 9,4 % · Marruecos 7,4 % · Portugal 5,6 % · Suiza
+> 5,2 % · Colombia 4,6 % · Bélgica 4,4 % · Noruega 4,3 % · Estados Unidos 3,9 % ·
+> Egipto 1,8 %** (resto 0 %, incluye a los 4 eliminados). Detalle en
+> `CHANGELOG.md` (2026-07-06) y `docs/ARQUITECTURA.md`. Cambio previo (06-jul,
+> misma sesión anterior): **4 resultados de Octavos cargados** (Paraguay 0-1
+> Francia, Canadá 0-3 Marruecos, Brasil 1-2 Noruega, México 2-3 Inglaterra;
+> fuente: prensa) **+ fórmulas de progresión automática** en la hoja
+> `Eliminatorias`: `Equipo 1`/`Equipo 2` de Octavos, Cuartos, Semifinales,
+> Tercer puesto y Final ahora se completan solos (fórmula `IF` que toma el
+> ganador por goles o por `Pen 1`/`Pen 2` si hubo empate) apenas se cargan los
+> goles de la ronda anterior — ya no hace falta correr Python para ver los
+> nombres. Los 8 cruces de Octavos ya muestran los países (incluidos los 4 que
+> faltaban jugarse al cargarlos: Portugal-España y EEUU-Bélgica el 06-jul,
+> Argentina-Egipto y Suiza-Colombia el 07-jul), determinados por los ganadores
+> de 32avos. Cambio previo (04-jul): **32avos de final COMPLETOS (16/16)** — los 14 resultados que faltaban se cargaron al Excel entre el
 > 30-jun y el 04-jul (commits `2ab6d62`…`bec1f20`, subidos vía upload web, sin
 > actualizar esta memoria en el momento). 3 definidos por penales: Alemania 1-1
 > **Paraguay** (pen 3-4), Países Bajos 1-1 **Marruecos** (pen 2-3), Australia 1-1
@@ -170,22 +189,25 @@ se cargan nuevos resultados en el Excel y se reejecuta el notebook.
   a los ganadores según `ORDEN_BRACKET_R32` (orden real del árbol FIFA), no el orden de
   filas del Excel. Validado contra el bracket oficial (16avos: Argentina vs ganador de
   Australia-Egipto; Suiza vs Colombia; Alemania vs Francia; etc.).
-- **Pronóstico actualizado (04-jul-2026, pipeline reejecutado local con los 32avos
-  YA completos, 20.000 corridas, semilla 2026, localía KO 0.3):** **Francia 17,4 % ·
-  Argentina 14,0 % · Brasil 10,4 % · España 9,4 % · México 7,5 % · Portugal 6,1 % ·
-  Inglaterra 5,8 % · Bélgica 4,9 % · Suiza 4,5 % · Marruecos 4,3 % · Colombia 4,2 % ·
-  Canadá 4,1 % · Estados Unidos 3,9 % · Egipto 1,6 % · Noruega 1,3 % · Paraguay 0,7 %**
-  (resto ≈0; suma = 1,0). Predictor final elegido: **blend top-3 elo+rf+xgb**
-  (log-loss OOF 0,8857, vs ensemble fijo 0,9153 y blend diverso 0,9240); `nu`=0,26,
-  `lambda_prior`=4,0. **Cambio de liderazgo vs el pronóstico previo** (antes Argentina
-  1ª ~10,1 %, ahora Francia 1ª ~17,4 %): la eliminación de Alemania por penales en
-  32avos (rival directo de Francia en el camino del bracket) y el cierre del resto de
-  los cruces reacomodó los caminos hacia semis/final. Avance a Cuartos de los
-  favoritos: Francia 77,7 % · Argentina 69,2 % · Brasil 68,4 % · España 54,6 %.
-  Detalle de cómo se obtuvo (incl. bug propio detectado y corregido en la corrida) en §13.
-  **Importante:** el predictor final es **data-driven y cambia con los datos** — a
-  veces gana el ensemble fijo (Elo/DC pesan más), a veces el blend top-3; no asumir
-  uno fijo. Se recalcula en cada corrida.
+- **Pronóstico CORREGIDO (06-jul-2026, después del fix de §14, 20.000 corridas,
+  semilla 2026, localía KO 0.3, con los 4 resultados de Octavos ya jugados
+  fijos):** **Francia 22,9 % · Inglaterra 15,5 % · Argentina 14,9 % · España
+  9,4 % · Marruecos 7,4 % · Portugal 5,6 % · Suiza 5,2 % · Colombia 4,6 % ·
+  Bélgica 4,4 % · Noruega 4,3 % · Estados Unidos 3,9 % · Egipto 1,8 %** (resto
+  0 %, incluye a Brasil/México/Paraguay/Canadá — **ya eliminados en Octavos, por
+  eso 0 %**). `nu`=0,26 (auto-calibrado sobre el dataset actual). Ver §14 para el
+  detalle del bug y la verificación.
+- ~~Pronóstico anterior (04-jul-2026, INCORRECTO — no descartaba a los
+  eliminados de Octavos porque `simular_torneo` sólo fijaba 32avos, ver §14):
+  Francia 17,4 % · Argentina 14,0 % · Brasil 10,4 % · España 9,4 % · México
+  7,5 % · Portugal 6,1 % · Inglaterra 5,8 % · Bélgica 4,9 % · Suiza 4,5 % ·
+  Marruecos 4,3 % · Colombia 4,2 % · Canadá 4,1 % · Estados Unidos 3,9 % ·
+  Egipto 1,6 % · Noruega 1,3 % · Paraguay 0,7 %.~~ **No usar este número**: fue
+  calculado sin fijar los resultados de Octavos (bug corregido en §14).
+  **Importante:** el predictor final (para P(1/X/2) de partidos pendientes, no
+  para `prob_campeon`) es **data-driven y cambia con los datos** — a veces gana
+  el ensemble fijo (Elo/DC pesan más), a veces el blend top-3; no asumir uno
+  fijo. Se recalcula en cada corrida.
 - **(jun-2026) XGBoost robusto entre versiones**: el ML ahora entrena con clases
   ENTERAS (0/1/2) y usa el `XGBClassifier` nativo (antes un wrapper fallaba en la
   versión de XGBoost de Colab → `xgb` daba `nan`). Ver §5.
@@ -374,14 +396,20 @@ print(res["campeon"].head(12))
 
 ## 9. Pendientes / mejoras posibles
 
-- **Recalcular el Excel en Excel/Sheets/LibreOffice y guardarlo** antes de
-  commitear (ver aviso arriba) — las fórmulas nuevas de progresión automática no
-  tienen valor cacheado todavía.
+- (Hecho 06-jul-2026) Excel recalculado, commiteado y pusheado — las fórmulas de
+  progresión automática ya tienen valor cacheado y el notebook las lee bien
+  (confirmado corriendo desde Colab).
+- (Hecho 06-jul-2026) **Bug de `simular_torneo`/`cuadro_completo_probable`
+  corregido** (sólo fijaban 32avos) — ver §14. Pronóstico de campeón recalculado
+  en §2.
 - **Cargar los 4 resultados de Octavos que faltan** (Portugal-España,
   EEUU-Bélgica, Argentina-Egipto, Suiza-Colombia) a medida que se jueguen. Con
-  las fórmulas nuevas, Cuartos se completa solo al cargarlos. Después: reejecutar
-  el pipeline (nuevo pronóstico de campeón) y correr `scripts/snapshot_ronda.py`
-  para congelar Cuartos (protocolo del pre-registro rodante).
+  las fórmulas del Excel, Cuartos se completa solo al cargarlos; con el fix de
+  §14, el pronóstico de campeón también los toma como hecho fijo apenas se
+  reejecute el notebook. Después: reejecutar el pipeline y correr
+  `scripts/snapshot_ronda.py` para congelar Cuartos (protocolo del pre-registro
+  rodante) — todavía no corresponde correrlo: Cuartos no tiene los 4 cruces
+  reales definidos hasta que cierre Octavos.
 - (Hecho 04-jul-2026) **Pipeline reejecutado con los 32avos completos (16/16)** —
   pronóstico de campeón actualizado en §2 (Francia pasa a 1ª ~17,4 %). Ver §13.
 - **Cargar los resultados de Octavos de final** en la hoja `Eliminatorias` a medida que
@@ -560,3 +588,60 @@ print(res["campeon"].head(12))
 - **Qué falta:** cuando se jueguen y carguen los resultados de Octavos, repetir
   `scripts/snapshot_ronda.py` para congelar Cuartos (protocolo del pre-registro
   rodante).
+
+## 14. Bug corregido: `simular_torneo`/`cuadro_completo_probable` no fijaban KO más allá de 32avos (2026-07-06)
+
+- **Síntoma:** al cargar los primeros resultados reales de Octavos (16avos en el
+  código) el 06-jul, el pronóstico de campeón y el "cuadro más probable" seguían
+  mostrando a Brasil, México, Paraguay y Canadá con probabilidad de campeón > 0 %
+  pese a estar **ya eliminados**, y `cuadro_completo_probable` inventaba un
+  marcador de Octavos (ej. "Brasil 2-1 Noruega") que **contradecía el resultado
+  real** (Noruega ganó 1-2). La tabla de la sección 12c (`probabilidades_eliminatorias`)
+  sí estaba correcta.
+- **Causa raíz:** en `src/simulate.py`, tanto `_una_corrida` (usada por el Monte
+  Carlo de `simular_torneo`) como `cuadro_completo_probable` sólo aplicaban los
+  resultados de KO ya cargados (`fixed_ko`) en la **primera ronda** del árbol:
+  ```python
+  fijo = fixed_ko.get(ids_r1[k]) if es_primera else None   # _una_corrida
+  fijo = fixed_ko.get(ids_r1[k]) if ridx == 0 else None    # cuadro_completo_probable
+  ```
+  Además, `fixed_ko` (armado en `_precomputar`) sólo se completaba con los datos
+  de **32avos** presentes en `bracket` (`construir_bracket` sólo conserva esa
+  ronda, por tener slots de posición `Slot 1`/`Slot 2`). Nunca hizo falta
+  arreglarlo porque hasta el 04-jul sólo existían resultados reales de 32avos;
+  al cargar Octavos el hueco quedó expuesto. `probabilidades_eliminatorias` no
+  tenía este bug porque ya recibía un `resultados_ko` externo (de
+  `data_loader.cargar_resultados_ko`, que sí lee TODAS las rondas) y lo
+  combinaba ronda por ronda desde el principio.
+- **Fix:** se generalizó el mismo mecanismo a las tres funciones.
+  - `_precomputar(equipos, fixture, bracket, gen, resultados_ko=None)` — nuevo
+    parámetro opcional; arma `ctx["res_ko_todas"]` combinando el `resultados_ko`
+    pasado (todas las rondas) con el `fixed_ko` derivado de `bracket` (sólo
+    32avos, como antes) como *fallback* si no se pasa nada (retrocompatible).
+  - `_una_corrida` — reemplaza `fixed_ko.get(ids_r1[k]) if es_primera else None`
+    por `res_ko.get((nombre, partido_num))` para **cualquier** ronda, donde
+    `partido_num` es el id real de 32avos o la posición (`k+1`) en las rondas
+    siguientes (ya vienen en orden de árbol).
+  - `simular_torneo(..., resultados_ko=None)` — nuevo parámetro, lo pasa a
+    `_precomputar`.
+  - `cuadro_completo_probable(..., resultados_ko=None)` — mismo cambio.
+  - Notebook: nueva celda tras la carga del Excel (sección 3) que calcula
+    `resultados_ko = cargar_resultados_ko(datos_bytes)` **una sola vez** y se
+    reusa en la simulación (sección 9), el cuadro más probable (sección 12b) y
+    la tabla de próximos partidos (sección 12c, que ya lo usaba).
+- **Verificado localmente** (20.000 corridas, mismo `dc`/semilla, con los 4
+  resultados de Octavos reales cargados): sin el fix, Brasil/México/Paraguay/
+  Canadá daban 10,0 %/7,1 %/0,9 %/3,6 % de prob. de campeón; **con el fix pasan
+  a 0,0 %** en Cuartos/Semis/Final/Campeón (consistente con estar eliminados), y
+  Francia/Marruecos/Noruega/Inglaterra avanzan como hecho fijo y sólo se simula
+  lo que sigue. `cuadro_completo_probable` ahora muestra los 4 resultados reales
+  con nota "(cargado)" y coincide con lo jugado. Nuevo pronóstico: ver §2.
+- **No afectado:** `probabilidades_eliminatorias` (sección 12c) ya estaba
+  correcta. `preregistro/*.csv` (el ancla, congelada el 29-jun) y
+  `scripts/gen_preregistro.py` **no se tocaron ni se re-ejecutaron** — el ancla
+  debe quedar fija por diseño (validación prospectiva), independientemente de
+  este bug. `scripts/snapshot_ronda.py` tampoco tenía el bug (usa
+  `probabilidades_eliminatorias`).
+- **Revisión del resto del código:** se releyeron completos `data_loader.py`,
+  `features.py`, `models.py` y `viz.py` buscando otros errores de corrección;
+  no se encontró ninguno.
