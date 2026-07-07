@@ -1,0 +1,15 @@
+{
+  "ronda_codigo": "Cuartos",
+  "ronda_humano": "Cuartos de final",
+  "n_partidos": 4,
+  "timestamp_utc": "2026-07-07 23:54:11 UTC",
+  "semilla": 2026,
+  "nu": 0.26,
+  "lambda_prior": 4.0,
+  "K_elo": 32.0,
+  "modelo_1x2_ko": "Dixon-Coles a 90' (mismo que el ancla); KO no reentrena el modelo",
+  "excel_sha256": "f0d8e877442a89ac400c607c35a9951ba5c88c0e9d9f66fb93c4c598fc39d387",
+  "snapshot_csv_sha256": "69d7115ca5d285c4bb6cf9a21a9231b1afb6bc486c8524a67a72acb9338fc47d",
+  "n_ko_cargados_al_snapshot": 24,
+  "nota": "Pre-registro rodante: P(1/X/2) por partido de la proxima ronda, congelada ANTES de jugarse. No modifica el ancla en preregistro/."
+}

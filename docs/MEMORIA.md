@@ -4,15 +4,16 @@
 > alcanza con `git clone` + leer este archivo, no depende de memoria local de
 > ninguna máquina. Mantenelo al día al cambiar decisiones importantes.
 >
-> **Última actualización: 2026-07-06.** Estado en una línea: fase de grupos
-> (72/72) y 32avos (16/16) completos; **4 de 8 Octavos jugados** (Paraguay 0-1
-> Francia, Canadá 0-3 Marruecos, Brasil 1-2 Noruega, México 2-3 Inglaterra;
-> faltan Portugal-España, EEUU-Bélgica, Argentina-Egipto, Suiza-Colombia); se
-> encontró y corrigió un bug que hacía que el pronóstico de campeón NO
-> descartara a los equipos ya eliminados más allá de 32avos (ver **§14**).
-> Pronóstico de campeón vigente y decisiones de modelado: **§2**. Cómo cargar
-> resultados nuevos y reejecutar: **§3**. Historial cronológico completo (todos
-> los hitos previos: pre-registro, penales, orden del bracket, tabla oficial de
+> **Última actualización: 2026-07-07.** Estado en una línea: fase de grupos
+> (72/72), 32avos (16/16) y **Octavos (8/8) completos** (Paraguay 0-1 Francia,
+> Canadá 0-3 Marruecos, Portugal 0-1 España, EEUU 1-4 Bélgica, Brasil 1-2
+> Noruega, México 2-3 Inglaterra, Argentina 3-2 Egipto, Suiza 0-0 Colombia
+> pen 4-3); clasificados a **Cuartos**: Francia, Marruecos, España, Bélgica,
+> Noruega, Inglaterra, Argentina, Suiza. **Pre-registro rodante de Cuartos
+> congelado** (07-jul-2026) antes de jugarse — ver **§13**. Pronóstico de
+> campeón vigente y decisiones de modelado: **§2**. Cómo cargar resultados
+> nuevos y reejecutar: **§3**. Historial cronológico completo (todos los
+> hitos previos: pre-registro, penales, orden del bracket, tabla oficial de
 > terceros, etc.) en [`../CHANGELOG.md`](../CHANGELOG.md) y en las secciones
 > numeradas **§11 a §14** de este documento.
 
@@ -40,6 +41,13 @@ se cargan nuevos resultados en el Excel y se reejecuta el notebook.
 - **48 selecciones**, 12 grupos (A–L). Confeds: UEFA 16, CAF 10, AFC 9,
   CONCACAF 6, CONMEBOL 6, OFC 1.
 - **FASE DE GRUPOS COMPLETA: 72/72 partidos cargados** (jun-2026).
+- **(07-jul-2026) OCTAVOS DE FINAL COMPLETOS (8/8)**. Los 8 clasificados a
+  Cuartos: **Francia** (v. Paraguay 1-0), **Marruecos** (v. Canadá 3-0),
+  **España** (v. Portugal 1-0), **Bélgica** (v. EEUU 4-1), **Noruega** (v.
+  Brasil 2-1), **Inglaterra** (v. México 3-2), **Argentina** (v. Egipto 3-2),
+  **Suiza** (v. Colombia, 0-0, pen 4-3). Cruces de Cuartos: Francia-Marruecos,
+  España-Bélgica, Noruega-Inglaterra, Argentina-Suiza. **Pre-registro rodante
+  de Cuartos congelado** antes de jugarse (ver §13).
 - **(04-jul-2026) 32AVOS DE FINAL COMPLETOS (16/16)**. Los 16 clasificados a Octavos:
   Paraguay, Francia, Canadá, Marruecos, Portugal, España, Estados Unidos, Bélgica,
   Brasil, Noruega, México, Inglaterra, Argentina, Egipto, Suiza, Colombia. 3 definidos
@@ -118,14 +126,19 @@ se cargan nuevos resultados en el Excel y se reejecuta el notebook.
   a los ganadores según `ORDEN_BRACKET_R32` (orden real del árbol FIFA), no el orden de
   filas del Excel. Validado contra el bracket oficial (16avos: Argentina vs ganador de
   Australia-Egipto; Suiza vs Colombia; Alemania vs Francia; etc.).
-- **Pronóstico CORREGIDO (06-jul-2026, después del fix de §14, 20.000 corridas,
-  semilla 2026, localía KO 0.3, con los 4 resultados de Octavos ya jugados
-  fijos):** **Francia 22,9 % · Inglaterra 15,5 % · Argentina 14,9 % · España
-  9,4 % · Marruecos 7,4 % · Portugal 5,6 % · Suiza 5,2 % · Colombia 4,6 % ·
-  Bélgica 4,4 % · Noruega 4,3 % · Estados Unidos 3,9 % · Egipto 1,8 %** (resto
-  0 %, incluye a Brasil/México/Paraguay/Canadá — **ya eliminados en Octavos, por
-  eso 0 %**). `nu`=0,26 (auto-calibrado sobre el dataset actual). Ver §14 para el
-  detalle del bug y la verificación.
+- **Pronóstico VIGENTE (07-jul-2026, 20.000 corridas, semilla 2026, localía KO
+  0.3, con los 8 resultados de Octavos ya jugados fijos):** **Francia 22,1 % ·
+  Argentina 21,0 % · España 16,1 % · Inglaterra 13,7 % · Suiza 8,4 % ·
+  Bélgica 7,9 % · Marruecos 7,0 % · Noruega 3,8 %** (resto 0 %: el resto de
+  las 48 selecciones, incluidas Portugal/Colombia/EEUU/Egipto/Brasil/México/
+  Paraguay/Canadá, ya está eliminado). `nu`=0,26, `lambda_prior`=4,0
+  (auto-calibrados). Snapshot congelado de Cuartos (P(1/X/2) por partido) en
+  `preregistro/rondas/snapshot_Cuartos_20260707T235411Z.csv` — ver §13.
+- ~~Pronóstico anterior (06-jul-2026, con sólo 4 de 8 Octavos jugados):
+  Francia 22,9 % · Inglaterra 15,5 % · Argentina 14,9 % · España 9,4 % ·
+  Marruecos 7,4 % · Portugal 5,6 % · Suiza 5,2 % · Colombia 4,6 % · Bélgica
+  4,4 % · Noruega 4,3 % · Estados Unidos 3,9 % · Egipto 1,8 %.~~ Superado al
+  cargarse los 4 resultados de Octavos restantes.
 - ~~Pronóstico anterior (04-jul-2026, INCORRECTO — no descartaba a los
   eliminados de Octavos porque `simular_torneo` sólo fijaba 32avos, ver §14):
   Francia 17,4 % · Argentina 14,0 % · Brasil 10,4 % · España 9,4 % · México
@@ -331,14 +344,16 @@ print(res["campeon"].head(12))
 - (Hecho 06-jul-2026) **Bug de `simular_torneo`/`cuadro_completo_probable`
   corregido** (sólo fijaban 32avos) — ver §14. Pronóstico de campeón recalculado
   en §2.
-- **Cargar los 4 resultados de Octavos que faltan** (Portugal-España,
-  EEUU-Bélgica, Argentina-Egipto, Suiza-Colombia) a medida que se jueguen. Con
-  las fórmulas del Excel, Cuartos se completa solo al cargarlos; con el fix de
-  §14, el pronóstico de campeón también los toma como hecho fijo apenas se
-  reejecute el notebook. Después: reejecutar el pipeline y correr
-  `scripts/snapshot_ronda.py` para congelar Cuartos (protocolo del pre-registro
-  rodante) — todavía no corresponde correrlo: Cuartos no tiene los 4 cruces
-  reales definidos hasta que cierre Octavos.
+- (Hecho 07-jul-2026) **Cargados los 4 resultados de Octavos que faltaban**
+  (Portugal-España, EEUU-Bélgica, Argentina-Egipto, Suiza-Colombia). **Octavos
+  completos (8/8)**, pronóstico de campeón recalculado (§2) y pre-registro
+  rodante de Cuartos congelado (§13/§15).
+- **Cargar los resultados de Cuartos** (Francia-Marruecos, España-Bélgica,
+  Noruega-Inglaterra, Argentina-Suiza) a medida que se jueguen. Con las
+  fórmulas del Excel, Semifinales se completa solo al cargarlos; el pronóstico
+  de campeón también los toma como hecho fijo apenas se reejecute el notebook.
+  Después: reejecutar el pipeline y correr `scripts/snapshot_ronda.py` para
+  congelar Semifinales (protocolo del pre-registro rodante).
 - (Hecho 04-jul-2026) **Pipeline reejecutado con los 32avos completos (16/16)** —
   pronóstico de campeón actualizado en §2 (Francia pasa a 1ª ~17,4 %, luego
   corregido en §14). Ver §13.
@@ -577,3 +592,40 @@ print(res["campeon"].head(12))
 - **Revisión del resto del código:** se releyeron completos `data_loader.py`,
   `features.py`, `models.py` y `viz.py` buscando otros errores de corrección;
   no se encontró ninguno.
+
+## 15. Cierre de Octavos + segundo snapshot rodante (2026-07-07)
+
+- **Octavos de final COMPLETOS (8/8).** Se cargaron al Excel los 4 resultados
+  que faltaban: Portugal 0-1 **España**, Estados Unidos 1-4 **Bélgica**,
+  Argentina 3-2 **Egipto**, Suiza 0-0 **Colombia** (pen 4-3, avanza Suiza).
+  Junto con los 4 ya cargados el 06-jul (Paraguay 0-1 Francia, Canadá 0-3
+  Marruecos, Brasil 1-2 Noruega, México 2-3 Inglaterra), quedan definidos los
+  8 clasificados a Cuartos: **Francia, Marruecos, España, Bélgica, Noruega,
+  Inglaterra, Argentina, Suiza**.
+- **Pipeline reejecutado localmente** (con el fix de §14 ya en `main`, 20.000
+  corridas, semilla 2026, `nu`=0,26, `lambda_prior`=4,0 auto-calibrados):
+  nuevo pronóstico de campeón (ver §2). Los 8 eliminados en Octavos
+  (Paraguay, Canadá, Portugal, Estados Unidos, Brasil, México, Egipto,
+  Colombia) y todos los eliminados en rondas previas quedan en 0 % —
+  consistente con el fix de §14.
+- **Segundo pre-registro RODANTE ejecutado** (`scripts/snapshot_ronda.py`):
+  con Octavos cerrados, detectó automáticamente **Cuartos de final** como
+  próxima ronda con cruces reales y congeló su P(1/X/2):
+
+  | Partido | Cruce | P(1) | P(X) | P(2) |
+  |---|---|---|---|---|
+  | 1 | Francia – Marruecos | 0,496 | 0,211 | 0,293 |
+  | 2 | España – Bélgica | 0,417 | 0,245 | 0,339 |
+  | 3 | Noruega – Inglaterra | 0,315 | 0,217 | 0,468 |
+  | 4 | Argentina – Suiza | 0,438 | 0,232 | 0,329 |
+
+  Modelo congelado: `nu`=0,26, `lambda_prior`=4,0, semilla 2026 (mismos que el
+  ancla y el snapshot de Octavos; Dixon-Coles a 90'). Archivos:
+  `preregistro/rondas/snapshot_Cuartos_20260707T235411Z.csv` (+ `.json` con
+  hashes SHA256 del Excel y del CSV). **A commitear y pushear antes de que se
+  jueguen los Cuartos** — el timestamp del commit/push a `origin/main` es la
+  prueba del compromiso prospectivo. **El ancla no se tocó**
+  (`preregistro/*.csv` sigue igual, commit `4887f42`).
+- **Qué falta:** cuando se jueguen y carguen los resultados de Cuartos,
+  repetir `scripts/snapshot_ronda.py` para congelar Semifinales (protocolo del
+  pre-registro rodante).

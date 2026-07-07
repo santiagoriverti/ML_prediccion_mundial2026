@@ -3,6 +3,30 @@
 Formato: cambios agrupados por fecha. El proyecto entrega **probabilidades**, no
 consejos de apuestas.
 
+## 2026-07-07 — Octavos completos + pronóstico actualizado + snapshot de Cuartos
+
+### Datos
+- Cargados en la hoja `Eliminatorias` los **4 resultados de Octavos que
+  faltaban**: Portugal 0-1 **España**, Estados Unidos 1-4 **Bélgica**,
+  Argentina 3-2 **Egipto**, Suiza 0-0 **Colombia** (pen 4-3, avanza Suiza).
+  **Octavos de final COMPLETOS (8/8)**. Clasificados a Cuartos: Francia,
+  Marruecos, España, Bélgica, Noruega, Inglaterra, Argentina, Suiza.
+
+### Resultado (reejecución del pipeline)
+- Pronóstico de campeón actualizado (20.000 corridas, semilla 2026,
+  `nu`=0,26, `lambda_prior`=4,0): **Francia 22,1 % · Argentina 21,0 % ·
+  España 16,1 % · Inglaterra 13,7 % · Suiza 8,4 % · Bélgica 7,9 % ·
+  Marruecos 7,0 % · Noruega 3,8 %** (resto 0 %, todos eliminados). Detalle
+  en `docs/MEMORIA.md` §2 y §15.
+
+### Metodología (pre-registro rodante)
+- Segunda corrida de `scripts/snapshot_ronda.py`: con Octavos cerrados,
+  detectó **Cuartos de final** como próxima ronda con cruces reales y
+  congeló su P(1/X/2) en
+  `preregistro/rondas/snapshot_Cuartos_20260707T235411Z.{csv,json}`, antes de
+  jugarse. El ancla (`preregistro/*.csv`, commit `4887f42`) no se modificó.
+  Detalle completo en `docs/MEMORIA.md` §15.
+
 ## 2026-07-06 (b) — Fix: la simulación no descartaba eliminados más allá de 32avos
 
 ### Bug corregido
