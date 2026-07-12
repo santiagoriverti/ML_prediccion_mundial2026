@@ -12,11 +12,13 @@
 > de Cuartos** (nuevo pronóstico de campeón: **Francia 30,7 % · Argentina
 > 29,2 % · España 22,5 % · Inglaterra 17,6 %**, resto 0 %) y **pre-registro
 > rodante de Semifinales congelado** (12-jul-2026, antes de jugarse) — ver
-> **§2** y **§17**. Cómo cargar resultados nuevos y reejecutar: **§3**.
-> Historial cronológico completo (todos los hitos previos: pre-registro,
-> penales, orden del bracket, tabla oficial de terceros, etc.) en
-> [`../CHANGELOG.md`](../CHANGELOG.md) y en las secciones numeradas **§11 a
-> §17** de este documento.
+> **§2** y **§17**. **Calibración de los pre-registros ya cerrados (32avos+
+> Octavos+Cuartos): 20/28 aciertos (71,4 %) en el resultado 1/X/2 más
+> probable** — ver **§18**. Cómo cargar resultados nuevos y reejecutar:
+> **§3**. Historial cronológico completo (todos los hitos previos:
+> pre-registro, penales, orden del bracket, tabla oficial de terceros, etc.)
+> en [`../CHANGELOG.md`](../CHANGELOG.md) y en las secciones numeradas
+> **§11 a §18** de este documento.
 
 Documentos complementarios:
 - [`DICCIONARIO_EXCEL.md`](DICCIONARIO_EXCEL.md) — cómo es el Excel real, hoja por
@@ -739,3 +741,39 @@ print(res["campeon"].head(12))
 - **Qué falta:** cuando se jueguen y carguen los resultados de Semifinales,
   repetir `scripts/snapshot_ronda.py` para congelar la Final (protocolo del
   pre-registro rodante).
+
+## 18. Análisis de calibración de los pre-registros ya cerrados (2026-07-12)
+
+Con 32avos, Octavos y Cuartos ya jugados, se cruzó cada P(1/X/2) congelada
+(ancla + snapshots rodantes) contra el resultado real **a 90'** (penales sólo
+definen quién avanza, no el 1/X/2 — convención del proyecto, ver §12).
+"Acierto" = el resultado (1/X/2) con mayor probabilidad coincidió con el real.
+
+| Ronda | Congelado | Aciertos | Prob. media asignada al resultado real |
+|---|---|---|---|
+| 32avos (ancla) | 29-jun, antes de jugarse *ningún* KO | 12/16 (75,0 %) | 0,425 |
+| Octavos | 04-jul, tras cerrar 32avos | 4/8 (50,0 %) | 0,379 |
+| Cuartos | 07-jul, tras cerrar Octavos | 4/4 (100 %) | 0,455 |
+| **Total** | — | **20/28 (71,4 %)** | **0,416** |
+
+- Muy por encima del azar (33 % con 3 resultados posibles), en línea con lo
+  esperable de un modelo de fútbol razonable.
+- **Los 4 fallos "duros"** (Alemania-Paraguay, Países Bajos-Marruecos,
+  Australia-Egipto, Suiza-Colombia) fueron justo los 4 partidos que terminaron
+  **empatados a 90' y se definieron por penales** — el empate es
+  estructuralmente el resultado más difícil de anticipar como favorito.
+  Los otros 4 fallos (Costa de Marfil-Noruega, Canadá-Marruecos,
+  Brasil-Noruega, México-Inglaterra) fueron sorpresas genuinas del menos
+  favorito ganando en tiempo regular.
+- Octavos fue la ronda más floja (50 %, la de más sorpresas reales); Cuartos
+  salió perfecto (4/4) pero con muestra chica (no sacar conclusiones de
+  "mejora" del modelo a partir de sólo 4 partidos).
+- Semifinales (snapshot de §17) todavía no se puede evaluar — no se jugó.
+- **Reproducible** con el script usado para este análisis (no versionado,
+  se armó ad-hoc en la sesión): cargar `preregistro/prob_ko_por_partido.csv` +
+  `preregistro/rondas/snapshot_16avos_...csv` + `snapshot_Cuartos_...csv`,
+  cruzar contra los resultados reales de la hoja `Eliminatorias` por
+  `(ronda, equipo_1, equipo_2)`, tomar `argmax(p_gana_1, p_empate, p_gana_2)`
+  como pick y comparar contra el resultado a 90'. Si se quiere repetir para
+  Semifinales/Final cuando cierren, conviene formalizarlo como
+  `scripts/calibracion_rondas.py` (pendiente, no crítico).

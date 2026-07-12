@@ -29,6 +29,14 @@ consejos de apuestas.
   pasaba `resultados_ko` a `simular_torneo`, reproduciendo el bug de §14
   para quien lo copiara con resultados de KO más allá de 32avos. Corregido.
 
+### Análisis de calibración
+- Cruzados los pre-registros ya cerrados (ancla 32avos + snapshots rodantes
+  de Octavos y Cuartos) contra los resultados reales a 90': **20/28 aciertos
+  (71,4 %)** en el resultado 1/X/2 más probable; prob. media asignada al
+  resultado real 0,416. Los 4 fallos "duros" coinciden con los 4 partidos
+  que terminaron empatados a 90' y se definieron por penales. Detalle en
+  `docs/MEMORIA.md` §18.
+
 ## 2026-07-07 — Octavos completos + pronóstico actualizado + snapshot de Cuartos
 
 ### Datos
