@@ -4,18 +4,22 @@
 > alcanza con `git clone` + leer este archivo, no depende de memoria local de
 > ninguna máquina. Mantenelo al día al cambiar decisiones importantes.
 >
-> **Última actualización: 2026-07-07.** Estado en una línea: fase de grupos
-> (72/72), 32avos (16/16) y **Octavos (8/8) completos** (Paraguay 0-1 Francia,
-> Canadá 0-3 Marruecos, Portugal 0-1 España, EEUU 1-4 Bélgica, Brasil 1-2
-> Noruega, México 2-3 Inglaterra, Argentina 3-2 Egipto, Suiza 0-0 Colombia
-> pen 4-3); clasificados a **Cuartos**: Francia, Marruecos, España, Bélgica,
-> Noruega, Inglaterra, Argentina, Suiza. **Pre-registro rodante de Cuartos
-> congelado** (07-jul-2026) antes de jugarse — ver **§13**. Pronóstico de
-> campeón vigente y decisiones de modelado: **§2**. Cómo cargar resultados
-> nuevos y reejecutar: **§3**. Historial cronológico completo (todos los
-> hitos previos: pre-registro, penales, orden del bracket, tabla oficial de
-> terceros, etc.) en [`../CHANGELOG.md`](../CHANGELOG.md) y en las secciones
-> numeradas **§11 a §14** de este documento.
+> **Última actualización: 2026-07-12.** Estado en una línea: fase de grupos
+> (72/72), 32avos (16/16), Octavos (8/8) y **Cuartos (4/4) completos**
+> (Francia 2-0 Marruecos, España 2-1 Bélgica, Noruega 1-2 Inglaterra,
+> Argentina 3-1 Suiza — resultados cargados al Excel entre el 10 y el
+> 12-jul-2026); clasificados a **Semifinales**: **Francia vs. España** y
+> **Inglaterra vs. Argentina**. **Pendiente (urgente, antes de que se jueguen
+> las Semis):** reejecutar el pipeline con los 4 resultados de Cuartos y
+> correr `scripts/snapshot_ronda.py` para congelar el pre-registro rodante de
+> Semifinales — ver **§9** y **§16**. El pronóstico de campeón de **§2** y el
+> pre-registro de Cuartos de **§13/§15** siguen siendo los últimos calculados
+> (con Cuartos aún sin jugar); no reflejan todavía los resultados reales de
+> Cuartos. Cómo cargar resultados nuevos y reejecutar: **§3**. Historial
+> cronológico completo (todos los hitos previos: pre-registro, penales, orden
+> del bracket, tabla oficial de terceros, etc.) en
+> [`../CHANGELOG.md`](../CHANGELOG.md) y en las secciones numeradas **§11 a
+> §16** de este documento.
 
 Documentos complementarios:
 - [`DICCIONARIO_EXCEL.md`](DICCIONARIO_EXCEL.md) — cómo es el Excel real, hoja por
@@ -41,6 +45,17 @@ se cargan nuevos resultados en el Excel y se reejecuta el notebook.
 - **48 selecciones**, 12 grupos (A–L). Confeds: UEFA 16, CAF 10, AFC 9,
   CONCACAF 6, CONMEBOL 6, OFC 1.
 - **FASE DE GRUPOS COMPLETA: 72/72 partidos cargados** (jun-2026).
+- **(10/11/12-jul-2026) CUARTOS DE FINAL COMPLETOS (4/4)**. Resultados
+  cargados a la hoja `Eliminatorias` en tres commits sucesivos
+  (`0c02f72` 10-jul, `10ecd38` 11-jul, `544bbdb` 12-jul): **Francia 2-0
+  Marruecos**, **España 2-1 Bélgica**, **Noruega 1-2 Inglaterra**,
+  **Argentina 3-1 Suiza**. Clasificados a Semifinales: **Francia, España,
+  Inglaterra, Argentina**. Cruces (ya resueltos por fórmula en el Excel):
+  **Francia vs. España** (SF1) y **Inglaterra vs. Argentina** (SF2). Detalle
+  en §16. **Todavía no se reejecutó el pipeline con estos resultados ni se
+  congeló el snapshot rodante de Semifinales** — es el pendiente más urgente
+  (ver §9), porque el protocolo exige congelarlo antes de que se jueguen las
+  Semis.
 - **(07-jul-2026) OCTAVOS DE FINAL COMPLETOS (8/8)**. Los 8 clasificados a
   Cuartos: **Francia** (v. Paraguay 1-0), **Marruecos** (v. Canadá 3-0),
   **España** (v. Portugal 1-0), **Bélgica** (v. EEUU 4-1), **Noruega** (v.
@@ -338,6 +353,16 @@ print(res["campeon"].head(12))
 
 ## 9. Pendientes / mejoras posibles
 
+- **(URGENTE, pendiente al 12-jul-2026) Reejecutar el pipeline con los 4
+  resultados de Cuartos ya cargados** (Francia 2-0 Marruecos, España 2-1
+  Bélgica, Noruega 1-2 Inglaterra, Argentina 3-1 Suiza — ver §2/§16) para
+  actualizar el pronóstico de campeón, y correr
+  `PYTHONUTF8=1 python scripts/snapshot_ronda.py` para congelar el
+  pre-registro rodante de **Semifinales** (Francia-España, Inglaterra-Argentina).
+  Debe hacerse **antes de que se jueguen las Semis** (protocolo de
+  compromiso prospectivo, ver §11) — si las Semis ya se jugaron cuando se
+  retome esto, el snapshot rodante de esta ronda queda inválido y hay que
+  documentarlo como excepción en vez de congelarlo.
 - (Hecho 06-jul-2026) Excel recalculado, commiteado y pusheado — las fórmulas de
   progresión automática ya tienen valor cacheado y el notebook las lee bien
   (confirmado corriendo desde Colab).
@@ -348,12 +373,10 @@ print(res["campeon"].head(12))
   (Portugal-España, EEUU-Bélgica, Argentina-Egipto, Suiza-Colombia). **Octavos
   completos (8/8)**, pronóstico de campeón recalculado (§2) y pre-registro
   rodante de Cuartos congelado (§13/§15).
-- **Cargar los resultados de Cuartos** (Francia-Marruecos, España-Bélgica,
-  Noruega-Inglaterra, Argentina-Suiza) a medida que se jueguen. Con las
-  fórmulas del Excel, Semifinales se completa solo al cargarlos; el pronóstico
-  de campeón también los toma como hecho fijo apenas se reejecute el notebook.
-  Después: reejecutar el pipeline y correr `scripts/snapshot_ronda.py` para
-  congelar Semifinales (protocolo del pre-registro rodante).
+- (Hecho 10/11/12-jul-2026) **Cargados los 4 resultados de Cuartos.** Con las
+  fórmulas del Excel, Semifinales ya se completó sola (Francia-España,
+  Inglaterra-Argentina). Falta el reejecutar-pipeline + congelar-snapshot de
+  arriba (primer bullet de esta sección).
 - (Hecho 04-jul-2026) **Pipeline reejecutado con los 32avos completos (16/16)** —
   pronóstico de campeón actualizado en §2 (Francia pasa a 1ª ~17,4 %, luego
   corregido en §14). Ver §13.
@@ -629,3 +652,35 @@ print(res["campeon"].head(12))
 - **Qué falta:** cuando se jueguen y carguen los resultados de Cuartos,
   repetir `scripts/snapshot_ronda.py` para congelar Semifinales (protocolo del
   pre-registro rodante).
+
+## 16. Cierre de Cuartos: resultados cargados, pipeline y snapshot de Semis pendientes (2026-07-12)
+
+- **Cuartos de final COMPLETOS (4/4).** Resultados cargados a la hoja
+  `Eliminatorias` en tres commits sucesivos de "Update
+  Mundial_2026_fuente_datos.xlsx": `0c02f72` (10-jul), `10ecd38` (11-jul),
+  `544bbdb` (12-jul) — sin mensaje de commit descriptivo (son los commits
+  automáticos del flujo de carga manual del Excel, no de esta sesión).
+  Marcador final: **Francia 2-0 Marruecos**, **España 2-1 Bélgica**,
+  **Noruega 1-2 Inglaterra**, **Argentina 3-1 Suiza**.
+- Clasificados a **Semifinales**: **Francia, España, Inglaterra, Argentina**.
+  Con las fórmulas del Excel, el cruce de Semis ya quedó resuelto solo:
+  **SF1 Francia vs. España**, **SF2 Inglaterra vs. Argentina** (goles aún sin
+  cargar — no se jugaron todavía a la fecha de esta nota).
+- **Lo que NO se hizo todavía (a diferencia de los cierres de ronda
+  anteriores en §13/§15):**
+  1. **No se reejecutó el pipeline** con los 4 resultados de Cuartos como
+     hecho fijo — el pronóstico de campeón de §2 sigue siendo el calculado
+     con Cuartos aún sin jugar (post-Octavos).
+  2. **No se corrió `scripts/snapshot_ronda.py`** para congelar el
+     pre-registro rodante de Semifinales. Esto es **urgente**: el protocolo
+     de compromiso prospectivo (§11) exige que el snapshot se congele y
+     pushee **antes** de que se jueguen las Semis — si se demora y las Semis
+     se juegan antes de correr el script, ya no hay forma de generar un
+     snapshot prospectivo válido para esa ronda.
+- **Próximo paso (en orden):** (1) reejecutar el notebook/pipeline en Colab o
+  local (§7) con el Excel actual (Cuartos ya cargados) y actualizar §2 con el
+  nuevo pronóstico de campeón; (2) correr
+  `PYTHONUTF8=1 python scripts/snapshot_ronda.py` para detectar Semifinales
+  como próxima ronda y congelar su P(1/X/2); (3) commitear y pushear el
+  snapshot generado en `preregistro/rondas/` **antes** de que arranquen las
+  Semis; (4) actualizar este documento (§2, §9) con los resultados.

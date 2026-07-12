@@ -3,6 +3,23 @@
 Formato: cambios agrupados por fecha. El proyecto entrega **probabilidades**, no
 consejos de apuestas.
 
+## 2026-07-12 — Cuartos completos (resultados cargados; pipeline y snapshot de Semis pendientes)
+
+### Datos
+- Cargados en la hoja `Eliminatorias` los **4 resultados de Cuartos de
+  final** en tres commits sucesivos (10, 11 y 12-jul-2026): **Francia 2-0
+  Marruecos**, **España 2-1 Bélgica**, **Noruega 1-2 Inglaterra**,
+  **Argentina 3-1 Suiza**. **Cuartos COMPLETOS (4/4)**. Clasificados a
+  Semifinales: Francia, España, Inglaterra, Argentina (cruces: Francia-España,
+  Inglaterra-Argentina).
+
+### Pendiente (no hecho en esta actualización)
+- Reejecutar el pipeline con estos resultados (pronóstico de campeón de §2
+  del `docs/MEMORIA.md` sigue siendo el de post-Octavos).
+- Correr `scripts/snapshot_ronda.py` para congelar el pre-registro rodante de
+  Semifinales **antes de que se jueguen** (protocolo del §11). Detalle en
+  `docs/MEMORIA.md` §16.
+
 ## 2026-07-07 — Octavos completos + pronóstico actualizado + snapshot de Cuartos
 
 ### Datos
