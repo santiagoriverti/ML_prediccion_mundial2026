@@ -7,19 +7,16 @@
 > **Última actualización: 2026-07-12.** Estado en una línea: fase de grupos
 > (72/72), 32avos (16/16), Octavos (8/8) y **Cuartos (4/4) completos**
 > (Francia 2-0 Marruecos, España 2-1 Bélgica, Noruega 1-2 Inglaterra,
-> Argentina 3-1 Suiza — resultados cargados al Excel entre el 10 y el
-> 12-jul-2026); clasificados a **Semifinales**: **Francia vs. España** y
-> **Inglaterra vs. Argentina**. **Pendiente (urgente, antes de que se jueguen
-> las Semis):** reejecutar el pipeline con los 4 resultados de Cuartos y
-> correr `scripts/snapshot_ronda.py` para congelar el pre-registro rodante de
-> Semifinales — ver **§9** y **§16**. El pronóstico de campeón de **§2** y el
-> pre-registro de Cuartos de **§13/§15** siguen siendo los últimos calculados
-> (con Cuartos aún sin jugar); no reflejan todavía los resultados reales de
-> Cuartos. Cómo cargar resultados nuevos y reejecutar: **§3**. Historial
-> cronológico completo (todos los hitos previos: pre-registro, penales, orden
-> del bracket, tabla oficial de terceros, etc.) en
+> Argentina 3-1 Suiza); clasificados a **Semifinales**: **Francia vs. España**
+> y **Inglaterra vs. Argentina**. **Pipeline reejecutado con los 4 resultados
+> de Cuartos** (nuevo pronóstico de campeón: **Francia 30,7 % · Argentina
+> 29,2 % · España 22,5 % · Inglaterra 17,6 %**, resto 0 %) y **pre-registro
+> rodante de Semifinales congelado** (12-jul-2026, antes de jugarse) — ver
+> **§2** y **§17**. Cómo cargar resultados nuevos y reejecutar: **§3**.
+> Historial cronológico completo (todos los hitos previos: pre-registro,
+> penales, orden del bracket, tabla oficial de terceros, etc.) en
 > [`../CHANGELOG.md`](../CHANGELOG.md) y en las secciones numeradas **§11 a
-> §16** de este documento.
+> §17** de este documento.
 
 Documentos complementarios:
 - [`DICCIONARIO_EXCEL.md`](DICCIONARIO_EXCEL.md) — cómo es el Excel real, hoja por
@@ -45,6 +42,14 @@ se cargan nuevos resultados en el Excel y se reejecuta el notebook.
 - **48 selecciones**, 12 grupos (A–L). Confeds: UEFA 16, CAF 10, AFC 9,
   CONCACAF 6, CONMEBOL 6, OFC 1.
 - **FASE DE GRUPOS COMPLETA: 72/72 partidos cargados** (jun-2026).
+- **(12-jul-2026) Pipeline reejecutado localmente con los 4 resultados de
+  Cuartos** (fix de §14 aplicado: `simular_torneo(..., resultados_ko=...)`
+  con los 28 resultados de KO cargados hasta la fecha — 16 de 32avos + 8 de
+  Octavos + 4 de Cuartos; 20.000 corridas, semilla 2026, `nu`=0,26,
+  `lambda_prior`=4,0). **Nuevo pronóstico de campeón** (sólo los 4
+  semifinalistas tienen prob. > 0, suma 100 %): **Francia 30,7 % · Argentina
+  29,2 % · España 22,5 % · Inglaterra 17,6 %**. Detalle y snapshot de
+  Semifinales en §17.
 - **(10/11/12-jul-2026) CUARTOS DE FINAL COMPLETOS (4/4)**. Resultados
   cargados a la hoja `Eliminatorias` en tres commits sucesivos
   (`0c02f72` 10-jul, `10ecd38` 11-jul, `544bbdb` 12-jul): **Francia 2-0
@@ -52,10 +57,7 @@ se cargan nuevos resultados en el Excel y se reejecuta el notebook.
   **Argentina 3-1 Suiza**. Clasificados a Semifinales: **Francia, España,
   Inglaterra, Argentina**. Cruces (ya resueltos por fórmula en el Excel):
   **Francia vs. España** (SF1) y **Inglaterra vs. Argentina** (SF2). Detalle
-  en §16. **Todavía no se reejecutó el pipeline con estos resultados ni se
-  congeló el snapshot rodante de Semifinales** — es el pendiente más urgente
-  (ver §9), porque el protocolo exige congelarlo antes de que se jueguen las
-  Semis.
+  en §16.
 - **(07-jul-2026) OCTAVOS DE FINAL COMPLETOS (8/8)**. Los 8 clasificados a
   Cuartos: **Francia** (v. Paraguay 1-0), **Marruecos** (v. Canadá 3-0),
   **España** (v. Portugal 1-0), **Bélgica** (v. EEUU 4-1), **Noruega** (v.
@@ -306,21 +308,31 @@ pip install -r requirements.txt
 ```python
 import sys; sys.path.insert(0, "src")
 import warnings; warnings.filterwarnings("ignore")
-from data_loader import cargar_datos
+from data_loader import cargar_datos, cargar_resultados_ko
 from features import imputar_rating_base, construir_dataset_partidos
-from models import DixonColes, entrenar_modelos_ml, pronostico_partidos
+from models import DixonColes, entrenar_modelos_ml, pronostico_partidos, calibrar_parametros
 from simulate import actualizar_elo, simular_torneo
 
-d   = cargar_datos("Mundial_2026_fuente_datos.xlsx")
+XLSX = "Mundial_2026_fuente_datos.xlsx"
+d   = cargar_datos(XLSX)
 eq  = actualizar_elo(imputar_rating_base(d.equipos), d.fixture)
 ds  = construir_dataset_partidos(eq, d.fixture)
-dc  = DixonColes(eq).entrenar(ds)
+cal = calibrar_parametros(ds, eq)
+dc  = DixonColes(eq, lambda_prior=cal["lambda_prior"]).entrenar(ds)
 ml, _ = entrenar_modelos_ml(ds)
 tab = pronostico_partidos(ds, eq, dc, ml)        # tabla por partido pendiente
-res = simular_torneo(eq, d.fixture, d.bracket, dc, n_sims=20000, verbose=False)
+rko = cargar_resultados_ko(XLSX)                 # TODOS los resultados de KO cargados (32avos...Final)
+res = simular_torneo(eq, d.fixture, d.bracket, dc, n_sims=20000, semilla=2026,
+                      resultados_ko=rko, verbose=False)
 print(res["campeon"].head(12))
 ```
 > En Windows, ejecutar con `PYTHONUTF8=1` para evitar problemas de acentos en consola.
+> **Importante:** pasar siempre `resultados_ko=cargar_resultados_ko(XLSX)` a
+> `simular_torneo` (y a `cuadro_completo_probable`/`probabilidades_eliminatorias`
+> si se usan). Sin este argumento sólo se fijan los 32avos (vía `bracket`) y el
+> resto del cuadro se simula libre — equipos ya eliminados en rondas posteriores
+> aparecen con probabilidad de campeón > 0 (bug de §14; confirmado que el
+> snippet viejo lo reproducía en §17). El parámetro se llama `semilla`, no `seed`.
 
 ## 8. Particularidades del Excel real (≠ diccionario teórico)
 
@@ -353,16 +365,16 @@ print(res["campeon"].head(12))
 
 ## 9. Pendientes / mejoras posibles
 
-- **(URGENTE, pendiente al 12-jul-2026) Reejecutar el pipeline con los 4
-  resultados de Cuartos ya cargados** (Francia 2-0 Marruecos, España 2-1
-  Bélgica, Noruega 1-2 Inglaterra, Argentina 3-1 Suiza — ver §2/§16) para
-  actualizar el pronóstico de campeón, y correr
-  `PYTHONUTF8=1 python scripts/snapshot_ronda.py` para congelar el
-  pre-registro rodante de **Semifinales** (Francia-España, Inglaterra-Argentina).
-  Debe hacerse **antes de que se jueguen las Semis** (protocolo de
-  compromiso prospectivo, ver §11) — si las Semis ya se jugaron cuando se
-  retome esto, el snapshot rodante de esta ronda queda inválido y hay que
-  documentarlo como excepción en vez de congelarlo.
+- (Hecho 12-jul-2026) **Pipeline reejecutado con los 4 resultados de
+  Cuartos** y **pre-registro rodante de Semifinales congelado** — ver §2/§17.
+- **Cargar los resultados de Semifinales** (Francia-España,
+  Inglaterra-Argentina) a medida que se jueguen. Después: reejecutar el
+  pipeline y correr `scripts/snapshot_ronda.py` para congelar la **Final**
+  (protocolo del pre-registro rodante) — antes de que se juegue.
+- (Hecho 12-jul-2026) **Corregido el snippet de §7** ("Probar el pipeline en
+  local"): no pasaba `resultados_ko` a `simular_torneo` ni importaba
+  `cargar_resultados_ko`, reproduciendo el bug de §14 para cualquiera que lo
+  copiara tal cual con resultados de KO más allá de 32avos (confirmado en §17).
 - (Hecho 06-jul-2026) Excel recalculado, commiteado y pusheado — las fórmulas de
   progresión automática ya tienen valor cacheado y el notebook las lee bien
   (confirmado corriendo desde Colab).
@@ -684,3 +696,46 @@ print(res["campeon"].head(12))
   como próxima ronda y congelar su P(1/X/2); (3) commitear y pushear el
   snapshot generado en `preregistro/rondas/` **antes** de que arranquen las
   Semis; (4) actualizar este documento (§2, §9) con los resultados.
+  **→ Hecho el mismo día, ver §17.**
+
+## 17. Pipeline reejecutado + snapshot rodante de Semifinales congelado (2026-07-12)
+
+- **Pipeline reejecutado en local** (no Colab), siguiendo el snippet de §7
+  pero pasando explícitamente `resultados_ko` a `simular_torneo` (el snippet
+  de §7 tal como está escrito NO lo pasa — hay que actualizarlo, ver nota
+  abajo). Sin `resultados_ko`, `simular_torneo` sólo fija los 32avos (vía
+  `bracket`) y el resto del cuadro se simula libre: la primera corrida de
+  esta sesión, hecha con el snippet de §7 tal cual, dio un pronóstico
+  claramente inválido (equipos eliminados en Cuartos —Brasil, México,
+  Portugal, Bélgica, etc.— con probabilidad de campeón > 0, algunas más
+  altas que semifinalistas reales). Repitiendo con
+  `resultados_ko=cargar_resultados_ko(XLSX)` (28 resultados: 16 de 32avos + 8
+  de Octavos + 4 de Cuartos) el resultado quedó consistente: sólo los 4
+  semifinalistas con probabilidad, sumando 100 %.
+  - **Nota para §7:** el snippet de "Probar el pipeline en local" no incluye
+    `resultados_ko` en la llamada a `simular_torneo` ni el import de
+    `cargar_resultados_ko`. Como está, reproduce el bug de §14 para
+    cualquiera que lo copie tal cual una vez que hay resultados de KO más
+    allá de 32avos. Pendiente corregir el snippet (agregado a §9).
+  - `simular_torneo` toma `semilla` (no `seed`) como nombre de parámetro.
+- **Pronóstico de campeón actualizado** (20.000 corridas, semilla 2026,
+  `nu`=0,26, `lambda_prior`=4,0 — mismos parámetros calibrados que en
+  rondas previas): **Francia 30,7 % · Argentina 29,2 % · España 22,5 % ·
+  Inglaterra 17,6 %** (resto 0 %, consistente con estar eliminados).
+- **Snapshot rodante de Semifinales congelado** (`scripts/snapshot_ronda.py`,
+  mismos `nu`/`lambda`/semilla que el ancla):
+
+  | Partido | Cruce | P(1) | P(X) | P(2) |
+  |---|---|---|---|---|
+  | 1 | Francia – España | 0,437 | 0,218 | 0,345 |
+  | 2 | Inglaterra – Argentina | 0,323 | 0,212 | 0,465 |
+
+  Archivos: `preregistro/rondas/snapshot_Semifinales_20260712T041348Z.csv`
+  (+ `.json` con hashes SHA256 del Excel y del CSV), timestamp
+  2026-07-12 04:13:48 UTC. **A commitear y pushear antes de que se jueguen
+  las Semis** — el timestamp del commit/push a `origin/main` es la prueba
+  del compromiso prospectivo. **El ancla no se tocó**
+  (`preregistro/*.csv` sigue igual).
+- **Qué falta:** cuando se jueguen y carguen los resultados de Semifinales,
+  repetir `scripts/snapshot_ronda.py` para congelar la Final (protocolo del
+  pre-registro rodante).

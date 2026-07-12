@@ -3,7 +3,7 @@
 Formato: cambios agrupados por fecha. El proyecto entrega **probabilidades**, no
 consejos de apuestas.
 
-## 2026-07-12 — Cuartos completos (resultados cargados; pipeline y snapshot de Semis pendientes)
+## 2026-07-12 — Cuartos completos + pronóstico actualizado + snapshot de Semifinales
 
 ### Datos
 - Cargados en la hoja `Eliminatorias` los **4 resultados de Cuartos de
@@ -13,12 +13,21 @@ consejos de apuestas.
   Semifinales: Francia, España, Inglaterra, Argentina (cruces: Francia-España,
   Inglaterra-Argentina).
 
-### Pendiente (no hecho en esta actualización)
-- Reejecutar el pipeline con estos resultados (pronóstico de campeón de §2
-  del `docs/MEMORIA.md` sigue siendo el de post-Octavos).
-- Correr `scripts/snapshot_ronda.py` para congelar el pre-registro rodante de
-  Semifinales **antes de que se jueguen** (protocolo del §11). Detalle en
-  `docs/MEMORIA.md` §16.
+### Resultado (reejecución del pipeline)
+- Pronóstico de campeón actualizado (20.000 corridas, semilla 2026,
+  `nu`=0,26, `lambda_prior`=4,0, con los 28 resultados de KO cargados hasta
+  Cuartos fijados vía `resultados_ko`): **Francia 30,7 % · Argentina 29,2 % ·
+  España 22,5 % · Inglaterra 17,6 %** (resto 0 %, todos eliminados). Detalle
+  en `docs/MEMORIA.md` §2 y §17.
+- **Pre-registro rodante de Semifinales congelado** antes de jugarse
+  (`scripts/snapshot_ronda.py`): Francia-España (P 0,437/0,218/0,345),
+  Inglaterra-Argentina (P 0,323/0,212/0,465). Archivos en
+  `preregistro/rondas/snapshot_Semifinales_20260712T041348Z.{csv,json}`.
+
+### Bug/doc menor corregido
+- El snippet de `docs/MEMORIA.md` §7 ("Probar el pipeline en local") no
+  pasaba `resultados_ko` a `simular_torneo`, reproduciendo el bug de §14
+  para quien lo copiara con resultados de KO más allá de 32avos. Corregido.
 
 ## 2026-07-07 — Octavos completos + pronóstico actualizado + snapshot de Cuartos
 

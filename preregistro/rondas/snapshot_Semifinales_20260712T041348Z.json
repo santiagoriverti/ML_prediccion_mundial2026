@@ -1,0 +1,15 @@
+{
+  "ronda_codigo": "Semifinales",
+  "ronda_humano": "Semifinales",
+  "n_partidos": 2,
+  "timestamp_utc": "2026-07-12 04:13:48 UTC",
+  "semilla": 2026,
+  "nu": 0.26,
+  "lambda_prior": 4.0,
+  "K_elo": 32.0,
+  "modelo_1x2_ko": "Dixon-Coles a 90' (mismo que el ancla); KO no reentrena el modelo",
+  "excel_sha256": "b1cb5c421b2c57ea11c494aad9a7cd4040e5f9c56b37e7b21a7ab826a8b5c05d",
+  "snapshot_csv_sha256": "a0865b3b7fc775962ae6291fd5994e1767c45da2fa14d3da28e04f82e214c5f1",
+  "n_ko_cargados_al_snapshot": 28,
+  "nota": "Pre-registro rodante: P(1/X/2) por partido de la proxima ronda, congelada ANTES de jugarse. No modifica el ancla en preregistro/."
+}
