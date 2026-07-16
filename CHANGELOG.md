@@ -3,6 +3,32 @@
 Formato: cambios agrupados por fecha. El proyecto entrega **probabilidades**, no
 consejos de apuestas.
 
+## 2026-07-16 — Semifinales completas + Final definida + snapshot de la Final
+
+### Datos
+- Cargados en la hoja `Eliminatorias` los **2 resultados de Semifinales**
+  (uploads del Excel del 14 y 15-jul-2026): **Francia 0-2 España** e
+  **Inglaterra 1-2 Argentina**. **Semifinales COMPLETAS (2/2)**. La favorita
+  del pronóstico previo (Francia, 30,7 %) quedó **eliminada** por España.
+- **FINAL definida: España vs Argentina**. Tercer puesto: Francia vs
+  Inglaterra (ambos sin jugar aún).
+
+### Resultado (reejecución del pipeline)
+- Pronóstico de campeón actualizado (20.000 corridas, semilla 2026,
+  `nu`=0,26, `lambda_prior`=4,0, con los **30 resultados de KO** cargados
+  fijados vía `resultados_ko`): **Argentina 52,4 % · España 47,6 %** (resto
+  0 %, todos eliminados). Detalle en `docs/MEMORIA.md` §2 y §19.
+- **Pre-registro rodante de la Final congelado** antes de jugarse
+  (`scripts/snapshot_ronda.py`): España-Argentina (P 0,356/0,229/0,415 a 90',
+  Dixon-Coles). Archivos en
+  `preregistro/rondas/snapshot_Final_20260716T181247Z.{csv,json}`.
+
+### Análisis de calibración (Semifinales)
+- El snapshot congelado de Semifinales (12-jul) acertó **1/2**: falló
+  Francia-España (predijo Francia, ganó España 2-0) y acertó
+  Inglaterra-Argentina (predijo Argentina, 2-1). Acumulado de todos los
+  pre-registros cerrados: **21/30 (70,0 %)** en el 1/X/2 más probable.
+
 ## 2026-07-12 — Cuartos completos + pronóstico actualizado + snapshot de Semifinales
 
 ### Datos

@@ -1,0 +1,15 @@
+{
+  "ronda_codigo": "Final",
+  "ronda_humano": "Final",
+  "n_partidos": 1,
+  "timestamp_utc": "2026-07-16 18:12:47 UTC",
+  "semilla": 2026,
+  "nu": 0.26,
+  "lambda_prior": 4.0,
+  "K_elo": 32.0,
+  "modelo_1x2_ko": "Dixon-Coles a 90' (mismo que el ancla); KO no reentrena el modelo",
+  "excel_sha256": "b5e9b9689503c9691bd41097604304967ff59b357c5a02f3a4ead28a56cb871d",
+  "snapshot_csv_sha256": "7a227d766714b9f2cae5baf4bb7b7147af2ca616a00234e1275bc87b016196aa",
+  "n_ko_cargados_al_snapshot": 30,
+  "nota": "Pre-registro rodante: P(1/X/2) por partido de la proxima ronda, congelada ANTES de jugarse. No modifica el ancla en preregistro/."
+}

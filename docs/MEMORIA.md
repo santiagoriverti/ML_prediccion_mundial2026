@@ -4,21 +4,22 @@
 > alcanza con `git clone` + leer este archivo, no depende de memoria local de
 > ninguna máquina. Mantenelo al día al cambiar decisiones importantes.
 >
-> **Última actualización: 2026-07-12.** Estado en una línea: fase de grupos
-> (72/72), 32avos (16/16), Octavos (8/8) y **Cuartos (4/4) completos**
-> (Francia 2-0 Marruecos, España 2-1 Bélgica, Noruega 1-2 Inglaterra,
-> Argentina 3-1 Suiza); clasificados a **Semifinales**: **Francia vs. España**
-> y **Inglaterra vs. Argentina**. **Pipeline reejecutado con los 4 resultados
-> de Cuartos** (nuevo pronóstico de campeón: **Francia 30,7 % · Argentina
-> 29,2 % · España 22,5 % · Inglaterra 17,6 %**, resto 0 %) y **pre-registro
-> rodante de Semifinales congelado** (12-jul-2026, antes de jugarse) — ver
-> **§2** y **§17**. **Calibración de los pre-registros ya cerrados (32avos+
-> Octavos+Cuartos): 20/28 aciertos (71,4 %) en el resultado 1/X/2 más
-> probable** — ver **§18**. Cómo cargar resultados nuevos y reejecutar:
-> **§3**. Historial cronológico completo (todos los hitos previos:
-> pre-registro, penales, orden del bracket, tabla oficial de terceros, etc.)
-> en [`../CHANGELOG.md`](../CHANGELOG.md) y en las secciones numeradas
-> **§11 a §18** de este documento.
+> **Última actualización: 2026-07-16.** Estado en una línea: fase de grupos
+> (72/72), 32avos (16/16), Octavos (8/8), Cuartos (4/4) y **Semifinales (2/2)
+> completas** (**Francia 0-2 España**, **Inglaterra 1-2 Argentina**); la
+> favorita previa (Francia) quedó **eliminada**. **FINAL definida: España vs.
+> Argentina** (tercer puesto Francia vs. Inglaterra; ambos sin jugar).
+> **Pipeline reejecutado con los 30 resultados de KO** (nuevo pronóstico de
+> campeón, sólo los 2 finalistas: **Argentina 52,4 % · España 47,6 %**) y
+> **pre-registro rodante de la Final congelado** (16-jul-2026, antes de
+> jugarse: España-Argentina P 0,356/0,229/0,415 a 90') — ver **§2** y **§19**.
+> **Calibración de los pre-registros ya cerrados (32avos+Octavos+Cuartos+
+> Semis): 21/30 aciertos (70,0 %) en el resultado 1/X/2 más probable** — ver
+> **§18/§19**. Cómo cargar resultados nuevos y reejecutar: **§3**. Historial
+> cronológico completo (todos los hitos previos: pre-registro, penales, orden
+> del bracket, tabla oficial de terceros, etc.) en
+> [`../CHANGELOG.md`](../CHANGELOG.md) y en las secciones numeradas
+> **§11 a §19** de este documento.
 
 Documentos complementarios:
 - [`DICCIONARIO_EXCEL.md`](DICCIONARIO_EXCEL.md) — cómo es el Excel real, hoja por
@@ -44,6 +45,19 @@ se cargan nuevos resultados en el Excel y se reejecuta el notebook.
 - **48 selecciones**, 12 grupos (A–L). Confeds: UEFA 16, CAF 10, AFC 9,
   CONCACAF 6, CONMEBOL 6, OFC 1.
 - **FASE DE GRUPOS COMPLETA: 72/72 partidos cargados** (jun-2026).
+- **(16-jul-2026) SEMIFINALES COMPLETAS (2/2)** (uploads del Excel del 14 y
+  15-jul, hoja `Eliminatorias`): **Francia 0-2 España** e **Inglaterra 1-2
+  Argentina**. La favorita del pronóstico previo (Francia, 30,7 %) quedó
+  **eliminada**. **FINAL definida por fórmula: España vs. Argentina**
+  (tercer puesto: Francia vs. Inglaterra; ambos sin goles cargados aún).
+  Detalle en §19.
+- **(16-jul-2026) Pipeline reejecutado localmente con las Semifinales
+  fijadas** (30 resultados de KO cargados: 16 de 32avos + 8 de Octavos + 4 de
+  Cuartos + 2 de Semis, pasados vía `resultados_ko`; 20.000 corridas, semilla
+  2026, `nu`=0,26, `lambda_prior`=4,0). **Nuevo pronóstico de campeón** (sólo
+  los 2 finalistas > 0, suma 100 %): **Argentina 52,4 % · España 47,6 %**.
+  **Pre-registro rodante de la Final congelado** antes de jugarse
+  (España-Argentina, P 0,356/0,229/0,415 a 90') — ver §19.
 - **(12-jul-2026) Pipeline reejecutado localmente con los 4 resultados de
   Cuartos** (fix de §14 aplicado: `simular_torneo(..., resultados_ko=...)`
   con los 28 resultados de KO cargados hasta la fecha — 16 de 32avos + 8 de
@@ -367,12 +381,17 @@ print(res["campeon"].head(12))
 
 ## 9. Pendientes / mejoras posibles
 
+- (Hecho 16-jul-2026) **Cargadas las Semifinales** (Francia 0-2 España,
+  Inglaterra 1-2 Argentina), **pipeline reejecutado** (Argentina 52,4 % ·
+  España 47,6 %) y **pre-registro rodante de la Final congelado** antes de
+  jugarse — ver §2/§19.
 - (Hecho 12-jul-2026) **Pipeline reejecutado con los 4 resultados de
   Cuartos** y **pre-registro rodante de Semifinales congelado** — ver §2/§17.
-- **Cargar los resultados de Semifinales** (Francia-España,
-  Inglaterra-Argentina) a medida que se jueguen. Después: reejecutar el
-  pipeline y correr `scripts/snapshot_ronda.py` para congelar la **Final**
-  (protocolo del pre-registro rodante) — antes de que se juegue.
+- **Cargar el resultado de la FINAL** (España vs. Argentina) y el del tercer
+  puesto (Francia vs. Inglaterra) cuando se jueguen. Después: reejecutar el
+  pipeline para el **campeón definitivo** y cruzar el snapshot de la Final
+  (§19) contra el resultado real. Con eso se cierra el pre-registro rodante
+  (no queda ronda siguiente que congelar) y el proyecto queda completo.
 - (Hecho 12-jul-2026) **Corregido el snippet de §7** ("Probar el pipeline en
   local"): no pasaba `resultados_ko` a `simular_torneo` ni importaba
   `cargar_resultados_ko`, reproduciendo el bug de §14 para cualquiera que lo
@@ -777,3 +796,50 @@ definen quién avanza, no el 1/X/2 — convención del proyecto, ver §12).
   como pick y comparar contra el resultado a 90'. Si se quiere repetir para
   Semifinales/Final cuando cierren, conviene formalizarlo como
   `scripts/calibracion_rondas.py` (pendiente, no crítico).
+
+## 19. Cierre de Semifinales + Final definida + snapshot de la Final (2026-07-16)
+
+- **Semifinales COMPLETAS (2/2).** Cargadas al Excel (hoja `Eliminatorias`)
+  vía los uploads "Add files via upload" del **14-jul** (`86ed927`) y
+  **15-jul** (`3ed7449`) — commits automáticos del flujo de carga manual, no
+  de una sesión de trabajo. Resultados: **Francia 0-2 España** e
+  **Inglaterra 1-2 Argentina**. Clasificados a la **Final**: **España** y
+  **Argentina**. Con las fórmulas del Excel, la Final ya quedó resuelta sola:
+  **España vs. Argentina**; el **tercer puesto** = **Francia vs. Inglaterra**
+  (ambos sin goles cargados a la fecha de esta nota).
+- **Dato saliente:** la favorita del pronóstico previo (Francia, 30,7 %) fue
+  **eliminada** por España en Semifinales, y España-Argentina reeditan la
+  final del Mundial anterior.
+- **Pipeline reejecutado en local** (snippet de §7 **pasando explícitamente
+  `resultados_ko=cargar_resultados_ko(XLSX)`** a `simular_torneo` — 30
+  resultados de KO: 16 de 32avos + 8 de Octavos + 4 de Cuartos + 2 de Semis;
+  20.000 corridas, semilla 2026, `nu`=0,26, `lambda_prior`=4,0
+  auto-calibrados). **Nuevo pronóstico de campeón** (sólo los 2 finalistas con
+  probabilidad, suma 100 %): **Argentina 52,4 % · España 47,6 %**. Todos los
+  eliminados quedan en 0 % (consistente con el fix de §14).
+- **Snapshot rodante de la Final congelado** (`scripts/snapshot_ronda.py`,
+  mismos `nu`/`lambda`/semilla que el ancla; detectó automáticamente la Final
+  como próxima ronda con cruce real):
+
+  | Partido | Cruce | P(1) | P(X) | P(2) |
+  |---|---|---|---|---|
+  | 1 | España – Argentina | 0,356 | 0,229 | 0,415 |
+
+  Archivos: `preregistro/rondas/snapshot_Final_20260716T181247Z.csv`
+  (+ `.json` con hashes SHA256 del Excel y del CSV), timestamp
+  2026-07-16 18:12:47 UTC. Excel SHA256 `b5e9b968…cb871d`. **A commitear y
+  pushear antes de que se juegue la Final** — el timestamp del commit/push a
+  `origin/main` es la prueba del compromiso prospectivo. **El ancla no se
+  tocó** (`preregistro/*.csv` sigue igual).
+- **Calibración del snapshot de Semifinales** (congelado el 12-jul, ver §17,
+  cruzado ahora contra el resultado real a 90'): **1/2 aciertos.** Falló
+  **Francia-España** (predijo Francia con P 0,437; ganó España 2-0) y acertó
+  **Inglaterra-Argentina** (predijo Argentina con P 0,465; ganó 2-1).
+  Acumulado de todos los pre-registros ya cerrados (32avos+Octavos+Cuartos+
+  Semis): **21/30 (70,0 %)** en el 1/X/2 más probable. La sorpresa de España
+  sobre Francia es del tipo "favorito cae en tiempo regular" (no penales).
+- **Qué falta:** cuando se juegue y cargue el resultado de la **Final** (y el
+  del tercer puesto), reejecutar el pipeline para el campeón definitivo y
+  cruzar el snapshot de la Final contra el resultado real (cierre del
+  pre-registro rodante — ya no queda ronda siguiente que congelar). Ahí el
+  proyecto queda **completo de punta a punta**.
