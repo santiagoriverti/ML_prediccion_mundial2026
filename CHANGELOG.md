@@ -3,6 +3,37 @@
 Formato: cambios agrupados por fecha. El proyecto entrega **probabilidades**, no
 consejos de apuestas.
 
+## 2026-07-20 — Final jugada: España campeón + cierre del pre-registro rodante
+
+### Datos
+- Cargados en la hoja `Eliminatorias` los **2 partidos que faltaban** (upload
+  del Excel del 20-jul-2026, commit `52690c0`): **Final España 1-0 Argentina**
+  y **Tercer puesto Francia 4-6 Inglaterra**. **TORNEO COMPLETO (104/104):**
+  72 de grupos + 32 de eliminatorias (incl. tercer puesto).
+- 🏆 **CAMPEÓN: España.** Subcampeón Argentina; tercero Inglaterra; cuarto
+  Francia. La favorita del Monte Carlo previo (Argentina, 52,4 %) fue
+  **subcampeona**: España dio el golpe en la final que reeditó la del Mundial
+  anterior.
+
+### Resultado (reejecución del pipeline)
+- Pipeline reejecutado en local con los **31 resultados de KO** cargados
+  fijados vía `resultados_ko` (20.000 corridas, semilla 2026, `nu`=0,26,
+  `lambda_prior`=4,0). Con la Final como hecho fijo, el pronóstico de campeón
+  colapsa al resultado real: **España 100 %** (todo lo demás 0 %). Sin errores
+  de punta a punta.
+
+### Cierre de la validación prospectiva (pre-registro rodante)
+- **Snapshot de la Final validado** contra el resultado real a 90': el pick del
+  modelo (argmax) era **Argentina** (P 0,415 vs España 0,356 vs empate 0,229);
+  ganó **España 1-0** → **fallo**. Sorpresa del tipo "favorito cae en tiempo
+  regular" (no penales).
+- **Acumulado final de todos los pre-registros cerrados**
+  (32avos+Octavos+Cuartos+Semis+Final): **21/31 (67,7 %)** en el 1/X/2 más
+  probable. Muy por encima del azar (33 % con 3 resultados posibles).
+- **No queda ronda siguiente que congelar:** el pre-registro rodante se cierra
+  acá. El ancla (`preregistro/*.csv`, commit `4887f42`) y todos los snapshots
+  rodantes quedan intactos. Detalle en `docs/MEMORIA.md` §20.
+
 ## 2026-07-16 — Semifinales completas + Final definida + snapshot de la Final
 
 ### Datos

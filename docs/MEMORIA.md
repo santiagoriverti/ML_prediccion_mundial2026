@@ -4,22 +4,22 @@
 > alcanza con `git clone` + leer este archivo, no depende de memoria local de
 > ninguna máquina. Mantenelo al día al cambiar decisiones importantes.
 >
-> **Última actualización: 2026-07-16.** Estado en una línea: fase de grupos
-> (72/72), 32avos (16/16), Octavos (8/8), Cuartos (4/4) y **Semifinales (2/2)
-> completas** (**Francia 0-2 España**, **Inglaterra 1-2 Argentina**); la
-> favorita previa (Francia) quedó **eliminada**. **FINAL definida: España vs.
-> Argentina** (tercer puesto Francia vs. Inglaterra; ambos sin jugar).
-> **Pipeline reejecutado con los 30 resultados de KO** (nuevo pronóstico de
-> campeón, sólo los 2 finalistas: **Argentina 52,4 % · España 47,6 %**) y
-> **pre-registro rodante de la Final congelado** (16-jul-2026, antes de
-> jugarse: España-Argentina P 0,356/0,229/0,415 a 90') — ver **§2** y **§19**.
-> **Calibración de los pre-registros ya cerrados (32avos+Octavos+Cuartos+
-> Semis): 21/30 aciertos (70,0 %) en el resultado 1/X/2 más probable** — ver
-> **§18/§19**. Cómo cargar resultados nuevos y reejecutar: **§3**. Historial
-> cronológico completo (todos los hitos previos: pre-registro, penales, orden
-> del bracket, tabla oficial de terceros, etc.) en
+> **Última actualización: 2026-07-20. 🏆 TORNEO TERMINADO — CAMPEÓN: ESPAÑA.**
+> Estado en una línea: **torneo completo (104/104)** — fase de grupos (72/72) y
+> las 7 rondas de eliminatorias, incluida la **Final España 1-0 Argentina** y el
+> **tercer puesto Francia 4-6 Inglaterra** (cargados el 20-jul, commit
+> `52690c0`). **Pipeline reejecutado con los 31 resultados de KO**: con la Final
+> como hecho fijo, el pronóstico de campeón colapsa al resultado real
+> (**España 100 %**). **Cierre del pre-registro rodante:** el snapshot congelado
+> de la Final (16-jul, antes de jugarse: España-Argentina P 0,356/0,229/0,415)
+> **falló** —el pick era Argentina (0,415), ganó España—, y la favorita del
+> Monte Carlo (Argentina 52,4 %) quedó subcampeona. **Acumulado final de todos
+> los pre-registros cerrados (32avos+Octavos+Cuartos+Semis+Final): 21/31
+> (67,7 %) en el 1/X/2 más probable** — ver **§20**. **El proyecto queda
+> completo de punta a punta; no queda ronda que congelar.** Cómo cargar
+> resultados y reejecutar: **§3**. Historial cronológico completo en
 > [`../CHANGELOG.md`](../CHANGELOG.md) y en las secciones numeradas
-> **§11 a §19** de este documento.
+> **§11 a §20** de este documento.
 
 Documentos complementarios:
 - [`DICCIONARIO_EXCEL.md`](DICCIONARIO_EXCEL.md) — cómo es el Excel real, hoja por
@@ -44,6 +44,15 @@ se cargan nuevos resultados en el Excel y se reejecuta el notebook.
 
 - **48 selecciones**, 12 grupos (A–L). Confeds: UEFA 16, CAF 10, AFC 9,
   CONCACAF 6, CONMEBOL 6, OFC 1.
+- **(20-jul-2026) 🏆 TORNEO TERMINADO — CAMPEÓN: ESPAÑA.** Cargados al Excel
+  (hoja `Eliminatorias`, commit `52690c0`) los 2 partidos que faltaban:
+  **Final España 1-0 Argentina** y **Tercer puesto Francia 4-6 Inglaterra**.
+  Podio: 1º España · 2º Argentina · 3º Inglaterra · 4º Francia.
+  **Pipeline reejecutado en local** con los **31 resultados de KO** fijados vía
+  `resultados_ko` (20.000 corridas, semilla 2026, `nu`=0,26, `lambda_prior`=4,0):
+  con la Final como hecho fijo el pronóstico de campeón colapsa a **España
+  100 %** (todo lo demás 0 %). **Pre-registro rodante cerrado y validado**: ya
+  no queda ronda que congelar. Detalle en §20.
 - **FASE DE GRUPOS COMPLETA: 72/72 partidos cargados** (jun-2026).
 - **(16-jul-2026) SEMIFINALES COMPLETAS (2/2)** (uploads del Excel del 14 y
   15-jul, hoja `Eliminatorias`): **Francia 0-2 España** e **Inglaterra 1-2
@@ -387,11 +396,16 @@ print(res["campeon"].head(12))
   jugarse — ver §2/§19.
 - (Hecho 12-jul-2026) **Pipeline reejecutado con los 4 resultados de
   Cuartos** y **pre-registro rodante de Semifinales congelado** — ver §2/§17.
-- **Cargar el resultado de la FINAL** (España vs. Argentina) y el del tercer
-  puesto (Francia vs. Inglaterra) cuando se jueguen. Después: reejecutar el
-  pipeline para el **campeón definitivo** y cruzar el snapshot de la Final
-  (§19) contra el resultado real. Con eso se cierra el pre-registro rodante
-  (no queda ronda siguiente que congelar) y el proyecto queda completo.
+- (Hecho 20-jul-2026) **Cargado el resultado de la FINAL** (España 1-0
+  Argentina) y el del tercer puesto (Francia 4-6 Inglaterra). **Pipeline
+  reejecutado** (campeón definitivo España 100 %) y **snapshot de la Final
+  cruzado** contra el resultado real (falló: pick Argentina, ganó España).
+  **Pre-registro rodante cerrado** — no queda ronda que congelar. **El
+  proyecto queda completo de punta a punta.** Detalle en §20.
+- (Sin pendientes de datos.) El torneo terminó. Lo que sigue es **opcional/de
+  paper**: formalizar `scripts/calibracion_rondas.py` (§18), reemplazar las
+  estimaciones curadas por datos oficiales, y las mejoras de modelado de más
+  abajo. Nada de esto es necesario para cerrar el proyecto.
 - (Hecho 12-jul-2026) **Corregido el snippet de §7** ("Probar el pipeline en
   local"): no pasaba `resultados_ko` a `simular_torneo` ni importaba
   `cargar_resultados_ko`, reproduciendo el bug de §14 para cualquiera que lo
@@ -842,4 +856,52 @@ definen quién avanza, no el 1/X/2 — convención del proyecto, ver §12).
   del tercer puesto), reejecutar el pipeline para el campeón definitivo y
   cruzar el snapshot de la Final contra el resultado real (cierre del
   pre-registro rodante — ya no queda ronda siguiente que congelar). Ahí el
-  proyecto queda **completo de punta a punta**.
+  proyecto queda **completo de punta a punta**. **→ Hecho el 20-jul, ver §20.**
+
+## 20. Cierre del torneo: Final jugada, España campeón (2026-07-20)
+
+- **TORNEO COMPLETO (104/104).** Cargados al Excel (hoja `Eliminatorias`,
+  upload del 20-jul, commit `52690c0`) los 2 partidos que faltaban:
+  **Final España 1-0 Argentina** y **Tercer puesto Francia 4-6 Inglaterra**.
+  Podio final: **1º España · 2º Argentina · 3º Inglaterra · 4º Francia**.
+- 🏆 **CAMPEÓN: España.** La favorita del Monte Carlo previo (Argentina,
+  52,4 %) quedó **subcampeona**: España ganó la final 1-0 (reedición de la
+  final del Mundial anterior).
+- **Pipeline reejecutado en local** (snippet de §7 pasando explícitamente
+  `resultados_ko=cargar_resultados_ko(XLSX)` — **31 resultados de KO**: 16 de
+  32avos + 8 de Octavos + 4 de Cuartos + 2 de Semis + 1 de la Final; 20.000
+  corridas, semilla 2026, `nu`=0,26, `lambda_prior`=4,0). Con la Final como
+  hecho fijo, el pronóstico de campeón **colapsa al resultado real**:
+  **España 100 %** (todo lo demás 0 %, consistente con el fix de §14). Corrida
+  sin errores de punta a punta.
+- **Cierre y validación del pre-registro rodante (snapshot de la Final).** El
+  snapshot congelado el 16-jul **antes de jugarse** (§19: España-Argentina
+  P 0,356/0,229/0,415 a 90') se cruzó contra el resultado real a 90'
+  (España 1-0): el pick del modelo (argmax) era **Argentina** (0,415, el más
+  alto); ganó **España** (0,356) → **fallo**. Es una sorpresa del tipo
+  "favorito cae en tiempo regular" (no penales), coherente con que el Monte
+  Carlo también daba a Argentina de favorita.
+- **Acumulado final de todos los pre-registros ya cerrados**
+  (32avos ancla + Octavos + Cuartos + Semis + Final):
+
+  | Ronda | Congelado | Aciertos |
+  |---|---|---|
+  | 32avos (ancla) | 29-jun | 12/16 (75,0 %) |
+  | Octavos | 04-jul | 4/8 (50,0 %) |
+  | Cuartos | 07-jul | 4/4 (100 %) |
+  | Semifinales | 12-jul | 1/2 (50,0 %) |
+  | Final | 16-jul | 0/1 (0 %) |
+  | **Total** | — | **21/31 (67,7 %)** |
+
+  Muy por encima del azar (33 % con 3 resultados posibles). Sigue valiendo la
+  lectura de §18: los fallos duros se concentran en empates definidos por
+  penales y en sorpresas de favoritos que caen en tiempo regular (España sobre
+  Francia y ahora sobre Argentina).
+- **Integridad del pre-registro:** el ancla (`preregistro/*.csv`, commit
+  `4887f42`) y los 5 snapshots rodantes (`preregistro/rondas/`) quedan
+  **intactos**. No se re-generó ni re-ejecutó nada del pre-registro para
+  validar: el modelo quedó congelado, como manda el protocolo prospectivo (§11).
+- **Estado final del proyecto: COMPLETO de punta a punta.** No queda ronda que
+  congelar ni datos que cargar. Lo que resta es **opcional/de paper** (ver §9):
+  formalizar `scripts/calibracion_rondas.py`, reemplazar estimaciones curadas
+  por datos oficiales, y las mejoras de modelado.
