@@ -34,6 +34,23 @@ consejos de apuestas.
   acá. El ancla (`preregistro/*.csv`, commit `4887f42`) y todos los snapshots
   rodantes quedan intactos. Detalle en `docs/MEMORIA.md` §20.
 
+### Herramientas
+- **Nuevo `scripts/calibracion_rondas.py`** (solo lectura): formaliza el
+  análisis de efectividad de §18/§20. Cruza las P(1/X/2) congeladas (ancla +
+  snapshots rodantes) contra los resultados reales a 90' y reporta accuracy,
+  Brier y log-loss por ronda y global. Corre con
+  `PYTHONUTF8=1 python scripts/calibracion_rondas.py`.
+
+### Efectividad predictiva final (reproducible con el script de arriba)
+- Accuracy 1/X/2 por ronda: 32avos 75,0 % (12/16) · Octavos 50,0 % (4/8) ·
+  Cuartos 100 % (4/4) · Semis 50,0 % (1/2) · Final 0 % (0/1). **Global: 21/31
+  (67,7 %)**, el doble del azar (33 %).
+- Métricas probabilísticas globales: **Brier 0,537** y **log-loss 0,912**, ambas
+  mejores que el baseline uniforme (0,667 y 1,099) en las 5 rondas.
+- A nivel campeón (Monte Carlo) el modelo no acertó al favorito: el ancla daba
+  Argentina 12,3 % / Francia 11,6 % / España 7,8 %; el campeón real (España)
+  era 3º en el ranking inicial. Mundial con alta varianza respecto al papel.
+
 ## 2026-07-16 — Semifinales completas + Final definida + snapshot de la Final
 
 ### Datos

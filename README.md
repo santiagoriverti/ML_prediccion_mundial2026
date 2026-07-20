@@ -11,6 +11,16 @@ resultados en el Excel insumo y se reejecuta el notebook.
 
 > Este proyecto entrega **probabilidades**, no recomendaciones de apuestas.
 
+> **🏆 Estado (20-jul-2026): TORNEO TERMINADO — CAMPEÓN: ESPAÑA.** Se jugaron los
+> 104 partidos (72 de grupos + 32 de eliminatorias). **Final: España 1-0
+> Argentina**; tercer puesto: Francia 4-6 Inglaterra. Podio: España · Argentina
+> · Inglaterra · Francia. **Efectividad predictiva del pre-registro (P(1/X/2)
+> congelada antes de cada ronda, evaluada a 90'): 21/31 aciertos (67,7 %)** —el
+> doble del azar— con Brier 0,537 y log-loss 0,912, ambos mejores que el
+> baseline uniforme. Reproducible con
+> `python scripts/calibracion_rondas.py`. Detalle en
+> [`docs/MEMORIA.md`](docs/MEMORIA.md) §20.
+
 ---
 
 ## ¿Qué hace?
@@ -179,7 +189,8 @@ ML_prediccion_mundial2026/
 ├── scripts/
 │   ├── enriquecer_excel.py            # re-genera el Excel: datos curados + fórmulas
 │   ├── gen_preregistro.py             # genera el pre-registro ANCLA (congelado)
-│   └── snapshot_ronda.py              # pre-registro RODANTE: snapshot por ronda de KO
+│   ├── snapshot_ronda.py              # pre-registro RODANTE: snapshot por ronda de KO
+│   └── calibracion_rondas.py          # efectividad: accuracy/Brier/log-loss por ronda y global
 ├── preregistro/                       # pronóstico congelado (validación prospectiva)
 │   ├── PREREGISTRO.md                 # protocolo + predicciones + hashes (ancla)
 │   ├── *.csv / config_modelo.json     # ancla: campeón, avance, 32avos por partido

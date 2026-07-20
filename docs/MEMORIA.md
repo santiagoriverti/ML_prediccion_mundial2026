@@ -402,10 +402,13 @@ print(res["campeon"].head(12))
   cruzado** contra el resultado real (falló: pick Argentina, ganó España).
   **Pre-registro rodante cerrado** — no queda ronda que congelar. **El
   proyecto queda completo de punta a punta.** Detalle en §20.
+- (Hecho 20-jul-2026) **Formalizado `scripts/calibracion_rondas.py`** (§18/§20):
+  reproduce la efectividad predictiva (accuracy + Brier + log-loss) por ronda y
+  global desde los snapshots congelados. Solo lectura.
 - (Sin pendientes de datos.) El torneo terminó. Lo que sigue es **opcional/de
-  paper**: formalizar `scripts/calibracion_rondas.py` (§18), reemplazar las
-  estimaciones curadas por datos oficiales, y las mejoras de modelado de más
-  abajo. Nada de esto es necesario para cerrar el proyecto.
+  paper**: reemplazar las estimaciones curadas por datos oficiales, y las
+  mejoras de modelado de más abajo. Nada de esto es necesario para cerrar el
+  proyecto.
 - (Hecho 12-jul-2026) **Corregido el snippet de §7** ("Probar el pipeline en
   local"): no pasaba `resultados_ko` a `simular_torneo` ni importaba
   `cargar_resultados_ko`, reproduciendo el bug de §14 para cualquiera que lo
@@ -802,14 +805,13 @@ definen quién avanza, no el 1/X/2 — convención del proyecto, ver §12).
   salió perfecto (4/4) pero con muestra chica (no sacar conclusiones de
   "mejora" del modelo a partir de sólo 4 partidos).
 - Semifinales (snapshot de §17) todavía no se puede evaluar — no se jugó.
-- **Reproducible** con el script usado para este análisis (no versionado,
-  se armó ad-hoc en la sesión): cargar `preregistro/prob_ko_por_partido.csv` +
-  `preregistro/rondas/snapshot_16avos_...csv` + `snapshot_Cuartos_...csv`,
-  cruzar contra los resultados reales de la hoja `Eliminatorias` por
-  `(ronda, equipo_1, equipo_2)`, tomar `argmax(p_gana_1, p_empate, p_gana_2)`
-  como pick y comparar contra el resultado a 90'. Si se quiere repetir para
-  Semifinales/Final cuando cierren, conviene formalizarlo como
-  `scripts/calibracion_rondas.py` (pendiente, no crítico).
+- **Reproducible y formalizado** (20-jul-2026) en **`scripts/calibracion_rondas.py`**
+  (solo lectura): cruza los snapshots congelados (ancla + rodantes) contra los
+  resultados reales de la hoja `Eliminatorias` por `(equipo_1, equipo_2)`, toma
+  `argmax(p_gana_1, p_empate, p_gana_2)` como pick y compara a 90', y además
+  reporta Brier y log-loss por ronda y global. Corre con
+  `PYTHONUTF8=1 python scripts/calibracion_rondas.py`. La tabla completa con
+  todas las rondas cerradas (incl. Semis y Final) está en §20.
 
 ## 19. Cierre de Semifinales + Final definida + snapshot de la Final (2026-07-16)
 
@@ -881,22 +883,35 @@ definen quién avanza, no el 1/X/2 — convención del proyecto, ver §12).
   alto); ganó **España** (0,356) → **fallo**. Es una sorpresa del tipo
   "favorito cae en tiempo regular" (no penales), coherente con que el Monte
   Carlo también daba a Argentina de favorita.
-- **Acumulado final de todos los pre-registros ya cerrados**
-  (32avos ancla + Octavos + Cuartos + Semis + Final):
+- **Efectividad predictiva final** (todos los pre-registros ya cerrados:
+  32avos ancla + Octavos + Cuartos + Semis + Final), evaluada a 90'.
+  **Reproducible con `PYTHONUTF8=1 python scripts/calibracion_rondas.py`**
+  (script nuevo, solo lectura; formaliza el análisis ad-hoc de §18):
 
-  | Ronda | Congelado | Aciertos |
-  |---|---|---|
-  | 32avos (ancla) | 29-jun | 12/16 (75,0 %) |
-  | Octavos | 04-jul | 4/8 (50,0 %) |
-  | Cuartos | 07-jul | 4/4 (100 %) |
-  | Semifinales | 12-jul | 1/2 (50,0 %) |
-  | Final | 16-jul | 0/1 (0 %) |
-  | **Total** | — | **21/31 (67,7 %)** |
+  | Ronda | Congelado | Aciertos 1/X/2 | Prob. media al real | Brier | Log-loss |
+  |---|---|---|---|---|---|
+  | 32avos (ancla) | 29-jun | 12/16 (75,0 %) | 0,425 | 0,517 | 0,891 |
+  | Octavos | 04-jul | 4/8 (50,0 %) | 0,379 | 0,605 | 1,002 |
+  | Cuartos | 07-jul | 4/4 (100 %) | 0,455 | 0,452 | 0,790 |
+  | Semifinales | 12-jul | 1/2 (50,0 %) | 0,405 | 0,551 | 0,914 |
+  | Final | 16-jul | 0/1 (0 %) | 0,356 | 0,639 | 1,032 |
+  | **GLOBAL** | — | **21/31 (67,7 %)** | — | **0,537** | **0,912** |
 
-  Muy por encima del azar (33 % con 3 resultados posibles). Sigue valiendo la
-  lectura de §18: los fallos duros se concentran en empates definidos por
-  penales y en sorpresas de favoritos que caen en tiempo regular (España sobre
-  Francia y ahora sobre Argentina).
+  - **Accuracy global 67,7 %**: el doble del azar (33 % con 3 resultados).
+  - **El modelo le gana al baseline uniforme (1/3-1/3-1/3) en las 5 rondas**
+    tanto en Brier (0,537 vs 0,667) como en log-loss (0,912 vs 1,099) — incluso
+    donde el pick falló, no lo hizo con exceso de confianza.
+  - Sigue valiendo la lectura de §18: los 9 fallos se reparten entre 4 empates
+    definidos por penales (el empate es el resultado más difícil de anticipar
+    como favorito) y 5 sorpresas de favoritos que caen en tiempo regular
+    (incl. España sobre Francia y sobre Argentina en la Final).
+- **A nivel "campeón" (Monte Carlo, aparte del 1/X/2)** el modelo NO acertó al
+  favorito: el ancla (29-jun) daba **Argentina 12,3 % · Francia 11,6 % · España
+  7,8 %** → el campeón real (España) salió 3º en el ranking inicial de
+  probabilidad, y el favorito de cada etapa terminó cayendo (Francia eliminada
+  en semis, Argentina subcampeona). Un Mundial con bastante varianza respecto
+  al papel. Esto es esperable: la P(campeón) es el producto de ~7 partidos, muy
+  sensible a una sola sorpresa.
 - **Integridad del pre-registro:** el ancla (`preregistro/*.csv`, commit
   `4887f42`) y los 5 snapshots rodantes (`preregistro/rondas/`) quedan
   **intactos**. No se re-generó ni re-ejecutó nada del pre-registro para
