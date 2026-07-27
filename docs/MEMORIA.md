@@ -44,6 +44,13 @@ se cargan nuevos resultados en el Excel y se reejecuta el notebook.
 
 - **48 selecciones**, 12 grupos (A–L). Confeds: UEFA 16, CAF 10, AFC 9,
   CONCACAF 6, CONMEBOL 6, OFC 1.
+- **(27-jul-2026) 📄 Sección 17 "PAPER EXPORT" agregada al notebook** para cerrar
+  el paper (Economics Bulletin). Corre al final, **no rehace el análisis**: reúsa
+  la pipeline canónica (= `gen_preregistro.py`) para el estado CONGELADO y
+  `calibracion_rondas.py` para la VALIDACIÓN. Imprime y guarda
+  `outputs/paper_handoff.txt` (bloque `BEGIN/END PAPER HANDOFF`, campos [0]-[12])
+  + 3 figuras PDF en `outputs/` (`fig_reliability`, `fig_champion`, `fig_pipeline`).
+  10/10 chequeos de verificación OK. Detalle en §21. Commit `494ab54`.
 - **(20-jul-2026) 🏆 TORNEO TERMINADO — CAMPEÓN: ESPAÑA.** Cargados al Excel
   (hoja `Eliminatorias`, commit `52690c0`) los 2 partidos que faltaban:
   **Final España 1-0 Argentina** y **Tercer puesto Francia 4-6 Inglaterra**.
@@ -216,6 +223,10 @@ se cargan nuevos resultados en el Excel y se reejecuta el notebook.
      *Entorno de ejecución ▸ Reiniciar y ejecutar todo*.
 3. Para **tocar el código**: trabajá en `src/`, probá local con el snippet de la
    sección 7, y commiteá.
+4. Para **regenerar los entregables del paper**: corré el notebook completo
+   (Colab: *Ejecutar todo*) — la **sección 17 "PAPER EXPORT"** (§21) reescribe
+   `outputs/paper_handoff.txt` + las 3 figuras PDF. En Colab, con
+   `requirements.txt`, `lightgbm`/`xgboost` están y los números coinciden exacto.
 
 > **Dónde vive la lógica (importante para no perder tiempo):** TODA la lógica de
 > cálculo está en `src/` (`data_loader.py`, `features.py`, `models.py`, `simulate.py`,
@@ -390,6 +401,10 @@ print(res["campeon"].head(12))
 
 ## 9. Pendientes / mejoras posibles
 
+- (Hecho 27-jul-2026) **Sección 17 "PAPER EXPORT" agregada al notebook** (§21):
+  handoff numérico [0]-[12] en `outputs/paper_handoff.txt` + 3 figuras PDF, todo
+  determinista, con la regla de estado congelado/validación respetada. 10/10
+  chequeos OK. Es el entregable para el paper (Economics Bulletin).
 - (Hecho 16-jul-2026) **Cargadas las Semifinales** (Francia 0-2 España,
   Inglaterra 1-2 Argentina), **pipeline reejecutado** (Argentina 52,4 % ·
   España 47,6 %) y **pre-registro rodante de la Final congelado** antes de
@@ -920,3 +935,62 @@ definen quién avanza, no el 1/X/2 — convención del proyecto, ver §12).
   congelar ni datos que cargar. Lo que resta es **opcional/de paper** (ver §9):
   formalizar `scripts/calibracion_rondas.py`, reemplazar estimaciones curadas
   por datos oficiales, y las mejoras de modelado.
+
+## 21. Sección "PAPER EXPORT" del notebook (2026-07-27)
+
+Para cerrar el paper (Economics Bulletin) se agregó la **sección 17 "PAPER
+EXPORT"** al **final** de `notebooks/prediccion_mundial2026.ipynb` (2 celdas:
+header markdown + código). **No toca ninguna celda ni la lógica previa**: es un
+add-on que corre después de una corrida completa. Commit `494ab54`.
+
+- **Qué produce** (todo determinista, semilla 2026, en `outputs/`):
+  - `paper_handoff.txt` — bloque entre marcadores exactos
+    `===== BEGIN PAPER HANDOFF =====` / `===== END PAPER HANDOFF =====` con 13
+    campos etiquetados [0]-[12]: estado de la corrida, config congelada, Tabla I
+    (13 features), confederaciones, Tabla II (modelos OOF), Tabla III
+    (predictores), ECE, campeón top-16, avance top-12, validación por ronda,
+    detalle por partido KO, desenlace real, y evolución Monte Carlo. Redondeos:
+    log-loss/Brier 3 decimales, % 1 decimal.
+  - `fig_reliability.pdf`, `fig_champion.pdf`, `fig_pipeline.pdf` — PDF vectorial,
+    serif, **sin título** (estilo revista). `fig_champion` usa la prob. **congelada**
+    con España resaltada como campeón real.
+
+- **REGLA DE ESTADO (clave, no mezclar):**
+  1. **PRONÓSTICO = estado congelado** (72 de grupo, 0 KO): las tablas OOF, la
+     selección de predictor y la fiabilidad/ECE dependen **solo de los 72 de
+     grupo** (el `fixture` NO incluye KO), así que reutilizar las variables del
+     notebook (`tabla_eval`, `tabla_pred`, `oof`, `ece`, `nombres_fin`…) = estado
+     congelado. **Campeón/avance se LEEN de `preregistro/`** (`prob_campeon.csv`,
+     `prob_avance.csv`, `config_modelo.json`), NO del Monte Carlo del Excel actual
+     (que con las eliminatorias cargadas **colapsa a España=100%**).
+  2. **VALIDACIÓN = torneo completo** (104 partidos): cruza los snapshots
+     congelados de `preregistro/` vs. resultados reales a 90' (reúsa los helpers
+     de `scripts/calibracion_rondas.py`: `_cargar_reales`, `_resolver`,
+     `_normalizar_cols`, `FUENTES`).
+
+- **Robustez:** la celda reúsa las variables ya calculadas por el notebook; si
+  falta alguna (p.ej. se corre suelta tras reiniciar), `_asegurar_estado_congelado()`
+  **reconstruye la pipeline canónica de grupos** (idéntica a `gen_preregistro.py`).
+  El CSV `prob_campeon.csv` está en encoding cp1252 → se lee con fallback
+  (`utf-8`→`cp1252`→`latin1`).
+
+- **Verificación in situ** (ejecutado end-to-end con `python -m nbconvert
+  --execute`, exit 0, sin errores). Los **10 chequeos dan OK**: `nu=0.26`,
+  `lambda=4.0`, predictor **Elo+RF+XGB** (pesos 0.353/0.325/0.322), Elo log-loss
+  0.873 (mejor), blend elegido 0.886, validación global 21/31 (67.7%), Brier
+  0.537, log-loss 0.912, ECE 0.050 (<0.10), campeón real España.
+
+- **Notas / gotchas:**
+  - **[12] evolución Monte Carlo** NO es recomputable desde un snapshot (los
+    snapshots guardan P(1/X/2) por partido, no la distribución de campeón). Se
+    reporta el valor **documentado** (§19: Argentina ~52,4% vs España ~47,6%) con
+    la salvedad explícita en el bloque.
+  - **lightgbm no instalado localmente** → el "blend diverso"/"core ensemble" dan
+    levemente distinto (0.917/0.910 vs 0.924/0.915 esperados). En **Colab** con
+    `requirements.txt` coincide. **El predictor elegido no cambia** (blend top-3).
+  - Existe una celda previa (sección 16) que genera figuras en `outputs/figuras/`
+    (ignorada por git); su `fig_champion` usa el estado colapsado. **Las figuras
+    del paper son las de `outputs/`** (sección 17), no las de `outputs/figuras/`.
+  - `.gitignore` ignora `outputs/*.png|csv|html` y `outputs/figuras/`, pero **no**
+    `outputs/*.pdf` ni `*.txt`: por eso los 4 entregables del paper quedan
+    versionados (commit `494ab54`).
