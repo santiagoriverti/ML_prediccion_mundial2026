@@ -1,0 +1,178 @@
+===== BEGIN PAPER HANDOFF =====
+Mundial 2026 -- Pronostico ML + econometria | export para paper (Economics Bulletin)
+
+[0] ESTADO DE LA CORRIDA
+    commit git actual        : a0fc19a1c916dcb553c968e354bdcea0327aa8f4
+    SHA256 Excel ACTUAL      : 82534f9ac1652413550970aa659ffd53a25e97fb2645bff1cdc1444839855e3d
+    partidos de grupo jugados: 72
+    partidos KO cargados     : 31
+    (Excel ACTUAL != Excel congelado: el actual ya trae las eliminatorias; coincide en False)
+
+[1] CONFIG CONGELADA (preregistro/config_modelo.json)
+    semilla=2026  n_sims=20000  nu=0.26  lambda_prior=4.0  K_elo=32.0
+    predictor_final = elo + rf + xgb  con pesos elo=0.353, rf=0.325, xgb=0.322
+    log-loss OOF mejor modelo individual : elo = 0.873
+    log-loss OOF del blend elegido        : 0.886
+    SHA256 Excel congelado : e9065ed9b1182366d1837c9422fec9a3db74c0eecb293eedb13fcd39b8a57389
+    partidos de grupo (congelado): 72
+
+[2] TABLA I -- FEATURES (covariables del modelo, 13; cada una = diferencia A-B)
+    - d_rating
+    - d_ranking
+    - d_puntos
+    - d_titulos
+    - d_apariciones
+    - d_mejor_result
+    - d_valor_plantel
+    - d_edad
+    - d_dt
+    - d_clasif
+    - d_top5
+    - anfitrion
+    - altitud
+
+[3] CONFEDERACIONES (n selecciones)
+    UEFA     : 16
+    CAF      : 10
+    AFC      : 9
+    CONCACAF : 6
+    CONMEBOL : 6
+    OFC      : 1
+    TOTAL    : 48
+
+[4] TABLA II -- MODELOS (validacion out-of-fold, SOLO fase de grupos; ordenado por log_loss)
+    modelo      log_loss  accuracy    brier
+    elo            0.873     0.611    0.514
+    rf             0.948     0.625    0.483
+    xgb            0.956     0.625    0.478
+    extra          0.959     0.625    0.495
+    logit          0.963     0.625    0.492
+    gbm            0.990     0.639    0.473
+    dc             1.013     0.486    0.626
+    hist           1.030     0.583    0.564
+
+[5] TABLA III -- PREDICTORES FINALES (out-of-fold, SOLO fase de grupos)
+    predictor         log_loss   composicion
+    blend top-3          0.886   elo+rf+xgb  <== ELEGIDO
+    core ensemble        0.910   todos (Elo/DC pesan mas)
+    blend diverso        0.917   todos (1/log-loss)
+    Predictor final = elo + rf + xgb  pesos elo=0.353, rf=0.325, xgb=0.322
+
+[6] ECE del predictor final elegido (estado congelado, one-vs-rest)
+    ECE = 0.050   |   umbral pre-declarado < 0.10: CUMPLE
+
+[7] CAMPEON -- probabilidad congelada (preregistro/prob_campeon.csv), top 16
+     1. Argentina        12.3%
+     2. Francia          11.6%
+     3. España           7.8%
+     4. Brasil           6.9%
+     5. México           6.5%
+     6. Alemania         5.7%
+     7. Inglaterra       5.1%
+     8. Países Bajos     5.0%
+     9. Portugal         4.7%
+    10. Suiza            4.3%
+    11. Bélgica          3.8%
+    12. Colombia         3.8%
+    13. Estados Unidos   3.3%
+    14. Canadá           2.8%
+    15. Marruecos        2.6%
+    16. Japón            2.6%
+
+[8] AVANCE -- P(llegar a cada ronda), congelado (preregistro/prob_avance.csv), top 12
+    NOMENCLATURA del codigo: prob_32avos = Ronda de 32 (todos los favoritos ~100%);
+    prob_16avos = OCTAVOS / Ronda de 16; luego Cuartos, Semifinales, Final, Campeon.
+    seleccion         Octavos  Cuartos    Semis    Final  Campeon
+    Argentina           74.3%    52.6%    34.7%    21.0%    12.3%
+    Francia             75.9%    48.7%    30.8%    19.3%    11.6%
+    España              70.6%    42.1%    26.2%    14.1%     7.8%
+    Brasil              59.0%    39.6%    22.5%    12.8%     6.9%
+    México              67.4%    39.0%    22.2%    12.6%     6.5%
+    Alemania            72.0%    34.9%    19.7%    10.8%     5.7%
+    Inglaterra          66.9%    36.3%    19.8%    10.6%     5.1%
+    Países Bajos        56.0%    34.3%    16.7%     9.2%     5.0%
+    Portugal            63.1%    32.5%    18.7%     9.2%     4.7%
+    Suiza               69.2%    39.1%    19.3%     9.3%     4.3%
+    Bélgica             58.0%    33.3%    16.2%     7.6%     3.8%
+    Colombia            66.1%    36.1%    17.5%     8.4%     3.8%
+
+[9] VALIDACION POR RONDA (torneo completo, modelo congelado, evaluado a 90)
+    ronda                 N aciertos   acc%   Brier  logloss   congelado (UTC)
+    Ronda de 32 (ancla)  16       12  75.0%   0.517    0.891   2026-06-29T14:53:10.111734+00:00
+    Octavos               8        4  50.0%   0.605    1.002   2026-07-04 04:11:19 UTC
+    Cuartos               4        4 100.0%   0.452    0.790   2026-07-07 23:54:11 UTC
+    Semifinales           2        1  50.0%   0.551    0.914   2026-07-12 04:13:48 UTC
+    Final                 1        0   0.0%   0.639    1.032   2026-07-16 18:12:47 UTC
+    GLOBAL               31       21  67.7%   0.537    0.912
+    baseline uniforme (1/3,1/3,1/3): Brier=0.667  logloss=1.099  (acc esperada 33.3%)
+
+[10] DETALLE POR PARTIDO KO (torneo completo, P(1/X/2) congelada del modelo)
+    ronda               equipo1         equipo2             P1    PX    P2 pick   real  90  pen  ok
+    Ronda de 32 (ancla) Alemania        Paraguay          0.55  0.23  0.21    1    1-1   X   si  no
+    Ronda de 32 (ancla) Francia         Suecia            0.59  0.20  0.22    1    3-0   1   no  si
+    Ronda de 32 (ancla) Sudáfrica       Canadá            0.24  0.31  0.45    2    0-1   2   no  si
+    Ronda de 32 (ancla) Países Bajos    Marruecos         0.44  0.21  0.34    1    1-1   X   si  no
+    Ronda de 32 (ancla) Portugal        Croacia           0.50  0.23  0.27    1    2-1   1   no  si
+    Ronda de 32 (ancla) España          Austria           0.52  0.23  0.25    1    3-0   1   no  si
+    Ronda de 32 (ancla) Estados Unidos  Bosnia y Herzeg   0.47  0.25  0.28    1    2-0   1   no  si
+    Ronda de 32 (ancla) Bélgica         Senegal           0.43  0.24  0.33    1    3-2   1   no  si
+    Ronda de 32 (ancla) Brasil          Japón             0.43  0.25  0.32    1    2-1   1   no  si
+    Ronda de 32 (ancla) Costa de Marfil Noruega           0.39  0.29  0.32    1    1-2   2   no  no
+    Ronda de 32 (ancla) México          Ecuador           0.47  0.30  0.22    1    2-0   1   no  si
+    Ronda de 32 (ancla) Inglaterra      RD Congo          0.43  0.28  0.29    1    2-1   1   no  si
+    Ronda de 32 (ancla) Argentina       Cabo Verde        0.49  0.28  0.22    1    3-2   1   no  si
+    Ronda de 32 (ancla) Australia       Egipto            0.30  0.34  0.36    2    1-1   X   si  no
+    Ronda de 32 (ancla) Suiza           Argelia           0.53  0.24  0.23    1    2-0   1   no  si
+    Ronda de 32 (ancla) Colombia        Ghana             0.38  0.35  0.27    1    1-0   1   no  si
+    Octavos             Paraguay        Francia           0.19  0.24  0.57    2    0-1   2   no  si
+    Octavos             Canadá          Marruecos         0.40  0.25  0.34    1    0-3   2   no  no
+    Octavos             Portugal        España            0.36  0.25  0.39    2    0-1   2   no  si
+    Octavos             Estados Unidos  Bélgica           0.38  0.23  0.40    2    1-4   2   no  si
+    Octavos             Brasil          Noruega           0.52  0.22  0.26    1    1-2   2   no  no
+    Octavos             México          Inglaterra        0.44  0.24  0.32    1    2-3   2   no  no
+    Octavos             Argentina       Egipto            0.48  0.25  0.27    1    3-2   1   no  si
+    Octavos             Suiza           Colombia          0.39  0.28  0.33    1    0-0   X   si  no
+    Cuartos             Francia         Marruecos         0.50  0.21  0.29    1    2-0   1   no  si
+    Cuartos             España          Bélgica           0.42  0.24  0.34    1    2-1   1   no  si
+    Cuartos             Noruega         Inglaterra        0.31  0.22  0.47    2    1-2   2   no  si
+    Cuartos             Argentina       Suiza             0.44  0.23  0.33    1    3-1   1   no  si
+    Semifinales         Francia         España            0.44  0.22  0.35    1    0-2   2   no  no
+    Semifinales         Inglaterra      Argentina         0.32  0.21  0.47    2    1-2   2   no  si
+    Final               España          Argentina         0.36  0.23  0.41    2    1-0   1   no  no
+
+[11] DESENLACE REAL
+    Final: España 1-0 Argentina  ->  campeon España, subcampeon Argentina
+    3er puesto: Francia 4-6 Inglaterra  ->  3o Inglaterra, 4o Francia
+    Podio: 1o España | 2o Argentina | 3o Inglaterra | 4o Francia
+    Suerte de los favoritos PRE-torneo (prob. de campeon congelada):
+      #1 Argentina    (12.3%) -> Subcampeon (perdio la Final)
+      #2 Francia      (11.6%) -> eliminado en Tercer puesto
+      #3 España       (7.8%) -> CAMPEON
+      #4 Brasil       (6.9%) -> eliminado en Octavos
+      #5 México       (6.5%) -> eliminado en Octavos
+
+[12] EVOLUCION MONTE CARLO -- P(campeon) de los finalistas ANTES de la Final
+    No se almacena P(campeon) pre-final en los snapshots (guardan P(1/X/2) por
+    partido, no la distribucion de campeon). Valor DOCUMENTADO (docs/MEMORIA.md
+    §19, Monte Carlo reejecutado con Semifinales cargadas y Final pendiente):
+       Argentina ~52.4%  vs  Espana ~47.6%
+    (el favorito del Monte Carlo pre-final, Argentina, perdio la Final 0-1).
+
+[FIGURAS] PDF vectorial (serif, sin titulo), estado CONGELADO donde corresponde:
+    - outputs/fig_reliability.pdf
+    - outputs/fig_champion.pdf
+    - outputs/fig_pipeline.pdf
+
+[VERIFICACION] (salida vs. constantes pre-declaradas)
+    OK   nu=0.26            (obtenido 0.26)
+    OK   lambda_prior=4.0   (obtenido 4.0)
+    OK   predictor=Elo+RF+XGB (obtenido elo+rf+xgb)
+    OK   Elo log-loss ~0.873 (obtenido 0.873; mejor modelo)
+    OK   blend elegido ~0.886 (obtenido 0.886)
+    OK   validacion global 21/31 (obtenido 21/31, 67.7%)
+    OK   Brier global ~0.537 (obtenido 0.537)
+    OK   log-loss global ~0.912 (obtenido 0.912)
+    OK   ECE < 0.10 (obtenido 0.050)
+    OK   campeon real = Espana (obtenido España)
+    NOTA: lightgbm no instalado -> el pool "blend diverso"/"core ensemble" no lo incluye (numeros levemente distintos a Colab). El PREDICTOR ELEGIDO no cambia.
+===== END PAPER HANDOFF =====
